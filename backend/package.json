@@ -1,0 +1,32 @@
+{
+  "name": "bir-yuva-bir-dost-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bir Yuva Bir Dost backend workspace",
+  "scripts": {
+    "start:dev": "nest start --watch",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.18",
+    "@nestjs/core": "^11.1.18",
+    "@nestjs/platform-express": "^11.1.18",
+    "@prisma/client": "^7.6.0",
+    "dotenv": "^17.4.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.17",
+    "@types/node": "^25.5.2",
+    "prisma": "^7.6.0",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^6.0.2"
+  }
+}
