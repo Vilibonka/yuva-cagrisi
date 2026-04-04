@@ -1,2 +1,0 @@
-# yuva-cagrisi
-
