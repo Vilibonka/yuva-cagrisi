@@ -81,32 +81,31 @@ enum MessageStatus {
 }
 
 model User {
-  id                   String                 @id @default(uuid())
-  fullName             String
-  email                String                 @unique
-  phone                String?
-  passwordHash         String
-  role                 UserRole               @default(USER)
-  profileImageUrl      String?
-  city                 String?
-  district             String?
-  bio                  String?
-  isVerified           Boolean                @default(false)
-  isActive             Boolean                @default(true)
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  refreshTokens        RefreshToken[]
-  createdPets          Pet[]                  @relation("PetCreatedBy")
-  posts                PetPost[]              @relation("PostOwner")
-  adoptionRequests     AdoptionRequest[]      @relation("RequestApplicant")
-  requestStatusChanges RequestStatusHistory[] @relation("RequestChangedBy")
-  savedPosts           SavedPost[]
-  postComments         PostComment[]
-  postReportsCreated   PostReport[]           @relation("ReportCreatedBy")
-  postReportsReviewed  PostReport[]           @relation("ReportReviewedBy")
-  notifications        Notification[]
+  id                       String                    @id @default(uuid())
+  fullName                 String
+  email                    String                    @unique
+  phone                    String?
+  passwordHash             String
+  role                     UserRole                  @default(USER)
+  profileImageUrl          String?
+  city                     String?
+  district                 String?
+  bio                      String?
+  isVerified               Boolean                   @default(false)
+  isActive                 Boolean                   @default(true)
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  refreshTokens            RefreshToken[]
+  createdPets              Pet[]                     @relation("PetCreatedBy")
+  posts                    PetPost[]                 @relation("PostOwner")
+  adoptionRequests         AdoptionRequest[]         @relation("RequestApplicant")
+  requestStatusChanges     RequestStatusHistory[]    @relation("RequestChangedBy")
+  savedPosts               SavedPost[]
+  postReportsCreated       PostReport[]              @relation("ReportCreatedBy")
+  postReportsReviewed      PostReport[]              @relation("ReportReviewedBy")
+  notifications            Notification[]
   conversationParticipants ConversationParticipant[]
-  sentMessages         Message[]              @relation("MessageSender")
+  sentMessages             Message[]                 @relation("MessageSender")
 
   @@index([role])
   @@index([isActive])
@@ -114,13 +113,13 @@ model User {
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   userId    String
   tokenHash String
   expiresAt DateTime
   revokedAt DateTime?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
@@ -177,7 +176,6 @@ model PetPost {
   images           PostImage[]
   adoptionRequests AdoptionRequest[]
   savedBy          SavedPost[]
-  comments         PostComment[]
   reports          PostReport[]
   conversations    Conversation[]
 
@@ -260,22 +258,6 @@ model SavedPost {
   @@index([postId])
 }
 
-model PostComment {
-  id        String   @id @default(uuid())
-  postId    String
-  userId    String
-  content   String
-  isVisible Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  post      PetPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([postId])
-  @@index([userId])
-  @@index([isVisible])
-}
-
 model PostReport {
   id               String       @id @default(uuid())
   postId           String
@@ -290,6 +272,7 @@ model PostReport {
   reportedBy       User         @relation("ReportCreatedBy", fields: [reportedByUserId], references: [id], onDelete: Cascade)
   reviewedBy       User?        @relation("ReportReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
 
+  @@unique([postId, reportedByUserId])
   @@index([postId])
   @@index([reportedByUserId])
   @@index([reviewedByUserId])

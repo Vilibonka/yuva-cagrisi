@@ -2,6 +2,10 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Login from './components/Login';
 import Registration from './components/Registration';
+import PostsGallery from './components/PostsGallery';
+import CreatePost from './components/CreatePost';
+import PostDetails from './components/PostDetails';
+import AdminDashboard from './components/AdminDashboard';
 
 function App() {
   return (
@@ -13,6 +17,9 @@ function App() {
               Yuva Çağrısı <span className="font-medium text-gray-500 text-sm ml-2">Sokak Hayvanı Sahiplendirme Platformu</span>
             </h1>
             <nav className="flex space-x-6">
+              <Link to="/posts" className="text-gray-600 font-medium hover:text-orange-500 transition border-b-2 border-transparent hover:border-orange-500 pb-1">İlanlar</Link>
+              <Link to="/create-post" className="text-gray-600 font-medium hover:text-orange-500 transition border-b-2 border-transparent hover:border-orange-500 pb-1">İlan Ver</Link>
+              <Link to="/admin" className="text-red-600 font-bold hover:text-red-700 transition border-b-2 border-transparent hover:border-red-600 pb-1">Yönetim Paneli</Link>
               <Link to="/login" className="text-gray-600 font-medium hover:text-orange-500 transition border-b-2 border-transparent hover:border-orange-500 pb-1">Giriş Yap</Link>
               <Link to="/register" className="text-gray-600 font-medium hover:text-orange-500 transition border-b-2 border-transparent hover:border-orange-500 pb-1">Kayıt Ol</Link>
             </nav>
@@ -23,7 +30,11 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Registration />} />
-            <Route path="*" element={<Login />} />
+            <Route path="/posts" element={<PostsGallery />} />
+            <Route path="/create-post" element={<CreatePost />} />
+            <Route path="/posts/:id" element={<PostDetails />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="*" element={<PostsGallery />} />
           </Routes>
         </main>
         

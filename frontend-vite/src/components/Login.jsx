@@ -1,8 +1,6 @@
-"use client";
 import React, { useState } from 'react';
 import api from '../api';
-import { useRouter } from 'next/navigation';
-
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -10,7 +8,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -29,7 +27,7 @@ const Login = () => {
         setSuccess(true);
         // Yönlendirme simülasyonu
         setTimeout(() => {
-          router.push('/'); 
+          // navigate('/dashboard'); 
           console.log("Authenticated state updated.");
         }, 1500);
       } else {
