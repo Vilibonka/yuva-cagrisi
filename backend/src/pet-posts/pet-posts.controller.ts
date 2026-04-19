@@ -1,7 +1,9 @@
-import { Controller, Post, Get, Patch, Body, Param, Query, UseInterceptors, UploadedFiles, Req } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, Query, UseGuards, UseInterceptors, UploadedFiles, Req } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AdoptionRequestsService } from '../adoption-requests/adoption-requests.service';
 import { PetPostsService } from './pet-posts.service';
 import { CreatePetPostDto } from './dto/create-pet-post.dto';
 import { UpdatePostStatusDto } from './dto/update-status.dto';
@@ -17,20 +19,20 @@ const storage = diskStorage({
 
 @Controller('pet-posts')
 export class PetPostsController {
-  constructor(private readonly petPostsService: PetPostsService) {}
+  constructor(
+    private readonly petPostsService: PetPostsService,
+    private readonly adoptionRequestsService: AdoptionRequestsService,
+  ) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(FilesInterceptor('images', 5, { storage }))
   async create(
     @Req() req: any,
     @Body() createPetPostDto: CreatePetPostDto,
     @UploadedFiles() files: Array<Express.Multer.File>
   ) {
-    // Mock user ID from a hypothetical auth guard. 
-    // Usually retrieved from req.user.id after JwtAuthGuard
-    // For this demonstration, we take userId from body if sent, or fallback to a dummy UUID or existing one.
-    // Ensure you align this with your actual JWT strategy.
-    const userId = req.user?.id || req.body.ownerUserId || "00000000-0000-0000-0000-000000000000";
+    const userId = req.user.id;
 
     const imageUrls = files?.map((file, index) => ({
       url: `/uploads/images/${file.filename}`,
@@ -45,13 +47,24 @@ export class PetPostsController {
     return this.petPostsService.findAllActive(filters);
   }
 
+  @Get(':id/adoption-requests')
+  @UseGuards(JwtAuthGuard)
+  async getAdoptionRequests(@Req() req: any, @Param('id') id: string) {
+    return this.adoptionRequestsService.getRequestsForPost(req.user.id, id);
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    return this.petPostsService.findOne(id);
+  }
+
   @Patch(':id/status')
+  @UseGuards(JwtAuthGuard)
   async updateStatus(
     @Req() req: any,
     @Param('id') id: string,
     @Body() updateStatusDto: UpdatePostStatusDto
   ) {
-    const userId = req.user?.id || req.body.ownerUserId || "00000000-0000-0000-0000-000000000000";
-    return this.petPostsService.updateStatus(userId, id, updateStatusDto.status);
+    return this.petPostsService.updateStatus(req.user.id, id, updateStatusDto.status);
   }
 }

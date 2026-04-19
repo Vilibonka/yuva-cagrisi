@@ -223,6 +223,7 @@ model AdoptionRequest {
   statusHistory      RequestStatusHistory[]
   conversations      Conversation[]
 
+  @@unique([postId, applicantUserId])
   @@index([postId])
   @@index([applicantUserId])
   @@index([status])

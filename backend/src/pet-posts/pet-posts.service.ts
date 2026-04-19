@@ -84,6 +84,25 @@ export class PetPostsService {
     });
   }
 
+  async findOne(postId: string) {
+    const post = await this.prisma.petPost.findUnique({
+      where: { id: postId },
+      include: {
+        pet: true,
+        images: true,
+        owner: {
+          select: { id: true, fullName: true, profileImageUrl: true, phone: true, email: true },
+        },
+      },
+    });
+
+    if (!post) {
+      throw new NotFoundException('Post not found');
+    }
+
+    return post;
+  }
+
   async updateStatus(userId: string, postId: string, status: PostStatus) {
     const post = await this.prisma.petPost.findUnique({ where: { id: postId } });
     if (!post) {
