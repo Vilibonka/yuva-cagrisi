@@ -1,86 +1,88 @@
 "use client";
 import React, { useState } from 'react';
-import api from '../api';
 import { useRouter } from 'next/navigation';
-
+import api from '@/api';
+import { storeAuthSession } from '@/lib/auth';
 
 const Login = () => {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const router = useRouter();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLogin = async (event) => {
+    event.preventDefault();
     setLoading(true);
     setError(null);
     setSuccess(false);
 
     try {
       const response = await api.post('/auth/login', { email, password });
-      
-      // Extract tokens from backend response. Backend might be returning { accessToken: "..." } or { access_token: "..." }
-      const token = response.data.accessToken || response.data.token || response.data.access_token; 
-      
-      if (token) {
-        localStorage.setItem('accessToken', token);
-        setSuccess(true);
-        // Yönlendirme simülasyonu
-        setTimeout(() => {
-          router.push('/'); 
-          console.log("Authenticated state updated.");
-        }, 1500);
-      } else {
-        setError('Giriş başarısız, token sunucudan alınamadı.');
+      const accessToken = response.data.accessToken || response.data.token || response.data.access_token;
+      const user = response.data.user;
+
+      if (!accessToken || !user) {
+        setError('Giris basarisiz, oturum bilgileri alinamadi.');
+        return;
       }
+
+      storeAuthSession({ accessToken, user });
+      setSuccess(true);
+
+      setTimeout(() => {
+        router.push('/posts');
+      }, 1200);
     } catch (err) {
-      if (err.response && err.response.data && err.response.data.message) {
-        setError(Array.isArray(err.response.data.message) ? err.response.data.message.join(', ') : err.response.data.message);
-      } else {
-        setError('Sunucu bağlantısında bir hata oluştu.');
-      }
+      const message = err.response?.data?.message;
+      setError(Array.isArray(message) ? message.join(', ') : message || 'Sunucu baglantisinda bir hata olustu.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-8">
-      <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">Giriş Yap</h2>
-      {error && <div className="mb-4 p-3 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-md">{error}</div>}
-      {success && <div className="mb-4 p-3 bg-green-50 border-l-4 border-green-500 text-green-700 rounded-md">Başarıyla giriş yapıldı! Yönlendiriliyorsunuz...</div>}
-      
+    <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-xl">
+      <h2 className="mb-6 text-center text-3xl font-bold text-gray-800">Giris Yap</h2>
+      {error && <div className="mb-4 rounded-md border-l-4 border-red-500 bg-red-50 p-3 text-red-700">{error}</div>}
+      {success && (
+        <div className="mb-4 rounded-md border-l-4 border-green-500 bg-green-50 p-3 text-green-700">
+          Basariyla giris yaptiniz. Yonlendiriliyorsunuz...
+        </div>
+      )}
+
       <form onSubmit={handleLogin} className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">E-posta</label>
-          <input 
-            type="email" 
-            required 
+          <label className="mb-2 block text-sm font-medium text-gray-700">E-posta</label>
+          <input
+            type="email"
+            required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition" 
+            onChange={(event) => setEmail(event.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-4 py-3 transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-500"
             placeholder="ornek@posta.com"
           />
         </div>
+
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Şifre</label>
-          <input 
-            type="password" 
-            required 
+          <label className="mb-2 block text-sm font-medium text-gray-700">Sifre</label>
+          <input
+            type="password"
+            required
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition" 
-            placeholder="••••••••"
+            onChange={(event) => setPassword(event.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-4 py-3 transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-500"
+            placeholder="********"
           />
         </div>
-        <button 
-          type="submit" 
+
+        <button
+          type="submit"
           disabled={loading}
-          className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg shadow-md hover:shadow-lg transition duration-200"
+          className="w-full rounded-lg bg-orange-500 py-3 font-bold text-white shadow-md transition duration-200 hover:bg-orange-600 hover:shadow-lg disabled:cursor-not-allowed disabled:bg-orange-300"
         >
-          {loading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
+          {loading ? 'Giris yapiliyor...' : 'Giris Yap'}
         </button>
       </form>
     </div>

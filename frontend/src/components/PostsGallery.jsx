@@ -1,8 +1,8 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Filter, MapPin, Bone, Info, Image as ImageIcon } from 'lucide-react';
+import { Bone, Filter, Image as ImageIcon, Info, MapPin } from 'lucide-react';
+import api from '@/api';
 
 export default function PostsGallery() {
   const [posts, setPosts] = useState([]);
@@ -11,138 +11,158 @@ export default function PostsGallery() {
     species: '',
     city: '',
     size: '',
-    gender: ''
+    gender: '',
   });
 
-  const fetchPosts = async () => {
-    setLoading(true);
-    try {
-      // Build query string
-      const params = new URLSearchParams();
-      Object.keys(filters).forEach(key => {
-        if (filters[key]) params.append(key, filters[key]);
-      });
-      
-      const response = await axios.get(`http://localhost:3000/pet-posts?${params.toString()}`);
-      setPosts(response.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchPosts = async () => {
+      setLoading(true);
+
+      try {
+        const params = new URLSearchParams();
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value) {
+            params.append(key, value);
+          }
+        });
+
+        const response = await api.get(`/pet-posts?${params.toString()}`);
+        setPosts(response.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchPosts();
   }, [filters]);
 
-  const handleFilterChange = (e) => {
-    setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleFilterChange = (event) => {
+    setFilters((previous) => ({ ...previous, [event.target.name]: event.target.value }));
   };
 
   return (
-    <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row gap-6">
-      {/* Sidebar Filters */}
-      <div className="w-full md:w-64 flex-shrink-0">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sticky top-6">
-          <div className="flex items-center gap-2 mb-6 text-orange-600">
-            <Filter className="w-5 h-5" />
-            <h3 className="font-bold text-lg text-gray-800">Filtreler</h3>
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 md:flex-row">
+      <div className="w-full flex-shrink-0 md:w-64">
+        <div className="sticky top-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-6 flex items-center gap-2 text-orange-600">
+            <Filter className="h-5 w-5" />
+            <h3 className="text-lg font-bold text-gray-800">Filtreler</h3>
           </div>
 
           <div className="space-y-5">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Tür</label>
-              <select name="species" value={filters.species} onChange={handleFilterChange} className="w-full p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-orange-500">
-                <option value="">Tümü</option>
-                <option value="DOG">Köpek</option>
+              <label className="mb-1 block text-sm font-semibold text-gray-700">Tur</label>
+              <select name="species" value={filters.species} onChange={handleFilterChange} className="w-full rounded-lg border border-gray-300 p-2 text-sm outline-none focus:border-orange-500">
+                <option value="">Tumu</option>
+                <option value="DOG">Kopek</option>
                 <option value="CAT">Kedi</option>
-                <option value="BIRD">Kuş</option>
-                <option value="RABBIT">Tavşan</option>
-                <option value="OTHER">Diğer</option>
+                <option value="BIRD">Kus</option>
+                <option value="RABBIT">Tavsan</option>
+                <option value="OTHER">Diger</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Şehir</label>
-              <input type="text" name="city" placeholder="Örn: Ankara" value={filters.city} onChange={handleFilterChange} className="w-full p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-orange-500" />
+              <label className="mb-1 block text-sm font-semibold text-gray-700">Sehir</label>
+              <input
+                type="text"
+                name="city"
+                placeholder="Orn: Ankara"
+                value={filters.city}
+                onChange={handleFilterChange}
+                className="w-full rounded-lg border border-gray-300 p-2 text-sm outline-none focus:border-orange-500"
+              />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Boyut</label>
-              <select name="size" value={filters.size} onChange={handleFilterChange} className="w-full p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-orange-500">
-                <option value="">Tümü</option>
-                <option value="SMALL">Küçük</option>
+              <label className="mb-1 block text-sm font-semibold text-gray-700">Boyut</label>
+              <select name="size" value={filters.size} onChange={handleFilterChange} className="w-full rounded-lg border border-gray-300 p-2 text-sm outline-none focus:border-orange-500">
+                <option value="">Tumu</option>
+                <option value="SMALL">Kucuk</option>
                 <option value="MEDIUM">Orta</option>
-                <option value="LARGE">Büyük</option>
+                <option value="LARGE">Buyuk</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Cinsiyet</label>
-              <select name="gender" value={filters.gender} onChange={handleFilterChange} className="w-full p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-orange-500">
-                <option value="">Tümü</option>
+              <label className="mb-1 block text-sm font-semibold text-gray-700">Cinsiyet</label>
+              <select name="gender" value={filters.gender} onChange={handleFilterChange} className="w-full rounded-lg border border-gray-300 p-2 text-sm outline-none focus:border-orange-500">
+                <option value="">Tumu</option>
                 <option value="MALE">Erkek</option>
-                <option value="FEMALE">Dişi</option>
+                <option value="FEMALE">Disi</option>
               </select>
             </div>
-            
-            <button onClick={() => setFilters({species: '', city: '', size: '', gender: ''})} className="w-full py-2 mt-2 text-sm text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition">
+
+            <button
+              onClick={() => setFilters({ species: '', city: '', size: '', gender: '' })}
+              className="mt-2 w-full rounded-lg py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100"
+            >
               Filtreleri Temizle
             </button>
           </div>
         </div>
       </div>
 
-      {/* Main Gallery */}
       <div className="flex-1">
-        <div className="flex justify-between items-center mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-800">Yuva Arayan Canlar</h2>
-          <span className="text-sm text-gray-500 font-medium">{posts.length} ilan bulundu</span>
+          <span className="text-sm font-medium text-gray-500">{posts.length} ilan bulundu</span>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1,2,3,4,5,6].map(i => (
-              <div key={i} className="animate-pulse bg-white rounded-2xl h-80 border border-gray-100"></div>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((item) => (
+              <div key={item} className="h-80 animate-pulse rounded-2xl border border-gray-100 bg-white" />
             ))}
           </div>
         ) : posts.length === 0 ? (
-          <div className="bg-white rounded-2xl p-12 text-center border border-gray-200 shadow-sm flex flex-col items-center">
-            <Bone className="w-16 h-16 text-gray-300 mb-4" />
-            <h3 className="text-lg font-bold text-gray-700">Aramanıza uygun canlı bulunamadı</h3>
-            <p className="text-gray-500 mt-2">Lütfen filtreleri değiştirerek tekrar deneyin.</p>
+          <div className="flex flex-col items-center rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-sm">
+            <Bone className="mb-4 h-16 w-16 text-gray-300" />
+            <h3 className="text-lg font-bold text-gray-700">Aramaniza uygun canli bulunamadi</h3>
+            <p className="mt-2 text-gray-500">Lutfen filtreleri degistirerek tekrar deneyin.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {posts.map(post => {
-              const primaryImage = post.images?.find(i => i.isPrimary) || post.images?.[0];
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {posts.map((post) => {
+              const primaryImage = post.images?.find((image) => image.isPrimary) || post.images?.[0];
               const imageUrl = primaryImage ? `http://localhost:3000${primaryImage.imageUrl}` : null;
-              
+
               return (
-                <Link href={`/posts/${post.id}`} key={post.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition group flex flex-col">
-                  <div className="h-56 relative bg-gray-100 overflow-hidden">
+                <Link href={`/posts/${post.id}`} key={post.id} className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:shadow-lg">
+                  <div className="relative h-56 overflow-hidden bg-gray-100">
                     {imageUrl ? (
-                      <img src={imageUrl} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+                      <img src={imageUrl} alt={post.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                        <ImageIcon className="w-10 h-10 mb-2 opacity-50" />
-                        <span className="text-xs">Görsel Yok</span>
+                      <div className="flex h-full w-full flex-col items-center justify-center text-gray-400">
+                        <ImageIcon className="mb-2 h-10 w-10 opacity-50" />
+                        <span className="text-xs">Gorsel Yok</span>
                       </div>
                     )}
+
                     {post.postType === 'FOUND_STRAY' && (
-                      <span className="absolute top-3 left-3 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">Kayıp/Sokak</span>
+                      <span className="absolute left-3 top-3 rounded-full bg-blue-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
+                        Kayip / Sokak
+                      </span>
                     )}
                     {post.postType === 'TEMP_HOME_NEEDED' && (
-                      <span className="absolute top-3 left-3 bg-purple-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">Geçici Yuva</span>
+                      <span className="absolute left-3 top-3 rounded-full bg-purple-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
+                        Gecici Yuva
+                      </span>
                     )}
                   </div>
-                  
-                  <div className="p-5 flex-1 flex flex-col">
-                    <h3 className="font-bold text-lg text-gray-800 line-clamp-1 group-hover:text-orange-600 transition">{post.title}</h3>
-                    <div className="flex items-center text-gray-500 text-sm mt-3 gap-3">
-                      <div className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {post.city}</div>
-                      <div className="flex items-center gap-1"><Info className="w-4 h-4" /> {post.pet?.species === 'DOG' ? 'Köpek' : post.pet?.species === 'CAT' ? 'Kedi' : 'Diğer'}</div>
+
+                  <div className="flex flex-1 flex-col p-5">
+                    <h3 className="line-clamp-1 text-lg font-bold text-gray-800 transition group-hover:text-orange-600">{post.title}</h3>
+                    <div className="mt-3 flex items-center gap-3 text-sm text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-4 w-4" /> {post.city}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Info className="h-4 w-4" />
+                        {post.pet?.species === 'DOG' ? 'Kopek' : post.pet?.species === 'CAT' ? 'Kedi' : 'Diger'}
+                      </div>
                     </div>
                   </div>
                 </Link>

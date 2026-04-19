@@ -1,8 +1,9 @@
 "use client";
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useRouter } from 'next/navigation';
-import { Camera, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { AlertCircle, Camera, CheckCircle, X } from 'lucide-react';
+import api from '@/api';
+import { getStoredUser } from '@/lib/auth';
 
 export default function CreatePost() {
   const router = useRouter();
@@ -17,182 +18,256 @@ export default function CreatePost() {
     postType: 'REHOME_OWNED_PET',
     title: '',
     description: '',
-    city: ''
+    city: '',
   });
   const [images, setImages] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((previous) => ({ ...previous, [name]: value }));
   };
 
-  const handleImageChange = (e) => {
-    const selectedFiles = Array.from(e.target.files);
+  const handleImageChange = (event) => {
+    const selectedFiles = Array.from(event.target.files || []);
     if (images.length + selectedFiles.length > 5) {
-      setError("Maksimum 5 fotoğraf yükleyebilirsiniz.");
+      setError('Maksimum 5 fotograf yukleyebilirsiniz.');
       return;
     }
-    setImages(prev => [...prev, ...selectedFiles]);
-    const newPreviews = selectedFiles.map(file => URL.createObjectURL(file));
-    setPreviewUrls(prev => [...prev, ...newPreviews]);
+
+    setImages((previous) => [...previous, ...selectedFiles]);
+    const newPreviewUrls = selectedFiles.map((file) => URL.createObjectURL(file));
+    setPreviewUrls((previous) => [...previous, ...newPreviewUrls]);
   };
 
   const removeImage = (index) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
-    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+    setImages((previous) => previous.filter((_, imageIndex) => imageIndex !== index));
+    setPreviewUrls((previous) => previous.filter((_, imageIndex) => imageIndex !== index));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      const data = new FormData();
-      Object.keys(formData).forEach(key => {
-        if (formData[key]) data.append(key, formData[key]);
-      });
-      images.forEach(image => {
-        data.append('images', image);
-      });
+      const currentUser = getStoredUser();
+      if (!currentUser) {
+        router.push('/login');
+        return;
+      }
 
-      // Adjust backend URL to match your proxy or exact URL
-      await axios.post('http://localhost:3000/pet-posts', data, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-          // Add Authorization header here if implemented
+      const payload = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value) {
+          payload.append(key, value);
         }
       });
-      
+      images.forEach((image) => payload.append('images', image));
+
+      await api.post('/pet-posts', payload, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
       router.push('/posts');
     } catch (err) {
-      console.error(err);
-      setError("İlan oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.");
+      const message = err.response?.data?.message;
+      setError(Array.isArray(message) ? message.join(', ') : message || 'Ilan olusturulurken bir hata olustu. Lutfen tekrar deneyin.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-3xl mx-auto w-full bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-      <div className="bg-orange-500 py-6 px-8 text-white">
-        <h2 className="text-3xl font-extrabold tracking-tight">Yeni İlan Oluştur</h2>
-        <p className="mt-2 text-orange-100">Dostumuz için en uygun yuvayı bulalım.</p>
+    <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl">
+      <div className="bg-orange-500 px-8 py-6 text-white">
+        <h2 className="text-3xl font-extrabold tracking-tight">Yeni Ilan Olustur</h2>
+        <p className="mt-2 text-orange-100">Dostumuz icin en uygun yuvayi bulalim.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-8 space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-8 p-8">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg p-4 flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-600">
+            <AlertCircle className="h-5 w-5 flex-shrink-0" />
             <p className="font-medium">{error}</p>
           </div>
         )}
 
         <div className="space-y-6">
-          <h3 className="text-xl font-bold border-b pb-2 text-gray-800">İlan Bilgileri</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <h3 className="border-b pb-2 text-xl font-bold text-gray-800">Ilan Bilgileri</h3>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div className="col-span-2">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">İlan Başlığı</label>
-              <input required name="title" value={formData.title} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition" placeholder="Örn: 2 aylık sevimli teli terier yuva arıyor" />
+              <label className="mb-2 block text-sm font-semibold text-gray-700">Ilan Basligi</label>
+              <input
+                required
+                name="title"
+                value={formData.title}
+                onChange={handleInputChange}
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+                placeholder="Orn: 2 aylik sevimli terrier yuva ariyor"
+              />
             </div>
-            
+
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">İlan Türü</label>
-              <select name="postType" value={formData.postType} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 outline-none transition">
+              <label className="mb-2 block text-sm font-semibold text-gray-700">Ilan Turu</label>
+              <select
+                name="postType"
+                value={formData.postType}
+                onChange={handleInputChange}
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:ring-2 focus:ring-orange-500"
+              >
                 <option value="REHOME_OWNED_PET">Evcil Hayvan Sahiplendirme</option>
                 <option value="FOUND_STRAY">Sokakta Bulunan Can</option>
-                <option value="TEMP_HOME_NEEDED">Geçici Yuva Aranıyor</option>
+                <option value="TEMP_HOME_NEEDED">Gecici Yuva Araniyor</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Şehir</label>
-              <input required name="city" value={formData.city} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 outline-none transition" placeholder="Örn: İstanbul" />
+              <label className="mb-2 block text-sm font-semibold text-gray-700">Sehir</label>
+              <input
+                required
+                name="city"
+                value={formData.city}
+                onChange={handleInputChange}
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:ring-2 focus:ring-orange-500"
+                placeholder="Orn: Istanbul"
+              />
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Detaylı Açıklama</label>
-              <textarea required name="description" value={formData.description} onChange={handleInputChange} rows="4" className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 outline-none transition" placeholder="Hayvanın alışkanlıkları, ihtiyaçları vb." />
+              <label className="mb-2 block text-sm font-semibold text-gray-700">Detayli Aciklama</label>
+              <textarea
+                required
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                rows="4"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:ring-2 focus:ring-orange-500"
+                placeholder="Hayvanin aliskanliklari, ihtiyaclari ve sureci hakkinda bilgi verin."
+              />
             </div>
           </div>
         </div>
 
         <div className="space-y-6">
-          <h3 className="text-xl font-bold border-b pb-2 text-gray-800 mt-6">Dostumuzun Bilgileri</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <h3 className="mt-6 border-b pb-2 text-xl font-bold text-gray-800">Dostumuzun Bilgileri</h3>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Tür</label>
-              <select name="species" value={formData.species} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 outline-none transition">
-                <option value="DOG">Köpek</option>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">Tur</label>
+              <select
+                name="species"
+                value={formData.species}
+                onChange={handleInputChange}
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="DOG">Kopek</option>
                 <option value="CAT">Kedi</option>
-                <option value="BIRD">Kuş</option>
-                <option value="RABBIT">Tavşan</option>
-                <option value="OTHER">Diğer</option>
+                <option value="BIRD">Kus</option>
+                <option value="RABBIT">Tavsan</option>
+                <option value="OTHER">Diger</option>
               </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Irk (Varsa)</label>
-              <input name="breed" value={formData.breed} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 outline-none transition" placeholder="Örn: Tekir" />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Cinsiyet</label>
-              <select name="gender" value={formData.gender} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 outline-none transition">
+              <label className="mb-2 block text-sm font-semibold text-gray-700">Irk</label>
+              <input
+                name="breed"
+                value={formData.breed}
+                onChange={handleInputChange}
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:ring-2 focus:ring-orange-500"
+                placeholder="Orn: Tekir"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">Cinsiyet</label>
+              <select
+                name="gender"
+                value={formData.gender}
+                onChange={handleInputChange}
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:ring-2 focus:ring-orange-500"
+              >
                 <option value="UNKNOWN">Bilinmiyor</option>
                 <option value="MALE">Erkek</option>
-                <option value="FEMALE">Dişi</option>
+                <option value="FEMALE">Disi</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Boyut</label>
-              <select name="size" value={formData.size} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 outline-none transition">
-                <option value="SMALL">Küçük</option>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">Boyut</label>
+              <select
+                name="size"
+                value={formData.size}
+                onChange={handleInputChange}
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="SMALL">Kucuk</option>
                 <option value="MEDIUM">Orta</option>
-                <option value="LARGE">Büyük</option>
+                <option value="LARGE">Buyuk</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Tahmini Yaş (Ay)</label>
-              <input type="number" name="estimatedAgeMonths" value={formData.estimatedAgeMonths} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 outline-none transition" placeholder="Örn: 12" />
+              <label className="mb-2 block text-sm font-semibold text-gray-700">Tahmini Yas (Ay)</label>
+              <input
+                type="number"
+                name="estimatedAgeMonths"
+                value={formData.estimatedAgeMonths}
+                onChange={handleInputChange}
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:ring-2 focus:ring-orange-500"
+                placeholder="Orn: 12"
+              />
             </div>
-            
-             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Karakter / Huy</label>
-              <input name="temperament" value={formData.temperament} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 outline-none transition" placeholder="Sakin, oyuncu vb." />
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">Karakter</label>
+              <input
+                name="temperament"
+                value={formData.temperament}
+                onChange={handleInputChange}
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:ring-2 focus:ring-orange-500"
+                placeholder="Sakin, oyuncu vb."
+              />
             </div>
           </div>
         </div>
 
         <div className="space-y-6">
-          <h3 className="text-xl font-bold border-b pb-2 text-gray-800 mt-6">Fotoğraflar</h3>
-          <p className="text-sm text-gray-500">İlk eklenen fotoğraf ana vitrin görseli olacaktır. En fazla 5 fotoğraf ekleyebilirsiniz.</p>
-          
-          <div className="flex items-center justify-center w-full">
-            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition">
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <Camera className="w-10 h-10 text-gray-400 mb-2" />
-                <p className="text-sm text-gray-500"><span className="font-semibold text-orange-600">Seçmek için tıklayın</span> veya sürükleyip bırakın</p>
+          <h3 className="mt-6 border-b pb-2 text-xl font-bold text-gray-800">Fotograflar</h3>
+          <p className="text-sm text-gray-500">Ilk eklenen fotograf ana vitrin gorseli olur. En fazla 5 fotograf ekleyebilirsiniz.</p>
+
+          <div className="flex w-full items-center justify-center">
+            <label className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 transition hover:bg-gray-100">
+              <div className="flex flex-col items-center justify-center pb-6 pt-5">
+                <Camera className="mb-2 h-10 w-10 text-gray-400" />
+                <p className="text-sm text-gray-500">
+                  <span className="font-semibold text-orange-600">Secmek icin tiklayin</span> veya surukleyip birakin
+                </p>
               </div>
               <input multiple type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
             </label>
           </div>
 
           {previewUrls.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
               {previewUrls.map((url, index) => (
-                <div key={index} className="relative group rounded-xl overflow-hidden aspect-square border border-gray-200">
-                  <img src={url} alt="preview" className="w-full h-full object-cover" />
+                <div key={url} className="group relative aspect-square overflow-hidden rounded-xl border border-gray-200">
+                  <img src={url} alt="Preview" className="h-full w-full object-cover" />
                   {index === 0 && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-orange-600/80 text-white text-xs py-1 text-center font-semibold">Ana Görsel</div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-orange-600/80 py-1 text-center text-xs font-semibold text-white">
+                      Ana Gorsel
+                    </div>
                   )}
-                  <button type="button" onClick={() => removeImage(index)} className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition shadow-sm">
-                    <X className="w-4 h-4" />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute right-2 top-2 rounded-full bg-red-500/80 p-1 text-white opacity-0 shadow-sm transition group-hover:opacity-100 hover:bg-red-600"
+                  >
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
               ))}
@@ -200,9 +275,18 @@ export default function CreatePost() {
           )}
         </div>
 
-        <div className="pt-6 border-t">
-          <button type="submit" disabled={loading} className={`w-full py-4 text-white font-bold text-lg rounded-xl flex items-center justify-center gap-2 transition ${loading ? 'bg-orange-400' : 'bg-orange-600 hover:bg-orange-700 shadow-lg hover:shadow-orange-600/30'}`}>
-            {loading ? 'Yükleniyor...' : <><CheckCircle className="w-6 h-6" /> İlanı Yayınla</>}
+        <div className="border-t pt-6">
+          <button
+            type="submit"
+            disabled={loading}
+            className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-bold text-white transition ${loading ? 'bg-orange-400' : 'bg-orange-600 shadow-lg hover:bg-orange-700 hover:shadow-orange-600/30'}`}
+          >
+            {loading ? 'Yukleniyor...' : (
+              <>
+                <CheckCircle className="h-6 w-6" />
+                Ilani Yayinla
+              </>
+            )}
           </button>
         </div>
       </form>
