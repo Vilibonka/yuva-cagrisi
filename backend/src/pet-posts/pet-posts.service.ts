@@ -91,7 +91,7 @@ export class PetPostsService {
         pet: true,
         images: true,
         owner: {
-          select: { id: true, fullName: true, profileImageUrl: true, phone: true, email: true },
+          select: { id: true, fullName: true, profileImageUrl: true, contactPhone: true, email: true },
         },
       },
     });

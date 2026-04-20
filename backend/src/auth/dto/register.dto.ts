@@ -16,7 +16,7 @@ export class RegisterDto {
 
     @IsString()
     @IsOptional()
-    phone?: string;
+    contactPhone?: string;
 
     @IsString()
     @IsOptional()
@@ -28,7 +28,7 @@ export class RegisterDto {
 
     @IsString()
     @IsOptional()
-    bio?: string;
+    biography?: string;
 
     @IsString()
     @IsOptional()

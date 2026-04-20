@@ -16,10 +16,10 @@ export class UsersController {
     async updateProfile(@Req() req: any, @Body() body: any) {
         return this.usersService.updateProfile(req.user.sub, {
             fullName: body.fullName,
-            phone: body.phone,
+            contactPhone: body.contactPhone,
             city: body.city,
             district: body.district,
-            bio: body.bio
+            biography: body.biography
         });
     }
 
