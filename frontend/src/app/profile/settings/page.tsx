@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/api';
+import { Camera } from 'lucide-react';
 
 export default function SettingsPage() {
   const { user, updateUser } = useAuth();
@@ -12,6 +13,10 @@ export default function SettingsPage() {
     city: '',
     biography: '',
   });
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -24,11 +29,23 @@ export default function SettingsPage() {
         city: user.city || '',
         biography: user.biography || '',
       });
+      if (user.profileImageUrl) {
+        // Ensure to construct proper URL if needed, depending on how it's stored.
+        setPreviewUrl(`http://localhost:3001${user.profileImageUrl}`);
+      }
     }
   }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setProfileImage(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,7 +55,18 @@ export default function SettingsPage() {
     setSuccess(false);
 
     try {
-      const { data } = await api.patch('/users/me', formData);
+      const submitData = new FormData();
+      submitData.append('fullName', formData.fullName);
+      submitData.append('contactPhone', formData.contactPhone);
+      submitData.append('city', formData.city);
+      submitData.append('biography', formData.biography);
+      
+      if (profileImage) {
+        submitData.append('profileImage', profileImage);
+      }
+
+      const { data } = await api.patch('/users/me', submitData);
+      
       updateUser(data);
       setSuccess(true);
     } catch (err: any) {
@@ -65,6 +93,28 @@ export default function SettingsPage() {
             </div>
           )}
 
+          <div className="flex flex-col items-center justify-center space-y-4 pb-4">
+            <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+              <div className="h-32 w-32 overflow-hidden rounded-full border-4 border-gray-100 bg-gray-50 flex items-center justify-center transition-all group-hover:border-orange-200">
+                {previewUrl ? (
+                  <img src={previewUrl} alt="Profil Fotoğrafı" className="h-full w-full object-cover" />
+                ) : (
+                  <Camera className="h-10 w-10 text-gray-300 group-hover:text-orange-400 transition-colors" />
+                )}
+              </div>
+              <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-white text-xs font-bold">Fotoğraf Değiştir</span>
+              </div>
+            </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={handleFileChange}
+            />
+          </div>
+
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Ad Soyad</label>
             <input
@@ -81,7 +131,11 @@ export default function SettingsPage() {
             <label className="text-sm font-medium text-gray-700">İletişim Telefonu</label>
             <input
               name="contactPhone"
-              type="text"
+              type="tel"
+              pattern="05[0-9]{9}"
+              title="Lütfen telefon numaranızı boşluk bırakmadan 05XXXXXXXXX formatında (11 hane) girin."
+              maxLength={11}
+              placeholder="Örn: 05551234567"
               className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 transition-all focus:border-orange-500 focus:outline-none focus:ring-orange-500"
               value={formData.contactPhone}
               onChange={handleChange}

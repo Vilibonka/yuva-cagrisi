@@ -84,7 +84,7 @@ export default function MyRequests() {
       ) : (
         requests.map((request) => {
           const primaryImage = getPrimaryImage(request.post);
-          const imageUrl = primaryImage ? `http://localhost:3000${primaryImage.imageUrl}` : null;
+          const imageUrl = primaryImage ? `http://localhost:3001${primaryImage.imageUrl}` : null;
 
           return (
             <div key={request.id} className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-gray-100">

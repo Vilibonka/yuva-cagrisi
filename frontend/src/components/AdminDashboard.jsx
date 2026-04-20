@@ -20,28 +20,28 @@ export default function AdminDashboard() {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get('http://localhost:3000/admin/users', adminHeaders);
+      const res = await axios.get('http://localhost:3001/admin/users', adminHeaders);
       setUsers(res.data);
     } catch(err) { console.error(err); }
   };
 
   const fetchReports = async () => {
     try {
-      const res = await axios.get('http://localhost:3000/admin/reports', adminHeaders);
+      const res = await axios.get('http://localhost:3001/admin/reports', adminHeaders);
       setReports(res.data);
     } catch(err) { console.error(err); }
   };
 
   const toggleUserFreeze = async (userId) => {
     try {
-      await axios.patch(`http://localhost:3000/admin/users/${userId}/freeze`, {}, adminHeaders);
+      await axios.patch(`http://localhost:3001/admin/users/${userId}/freeze`, {}, adminHeaders);
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, isActive: !u.isActive } : u));
     } catch (err) { console.error(err); alert("İşlem başarısız."); }
   };
 
   const dismissReport = async (reportId) => {
     try {
-      await axios.patch(`http://localhost:3000/admin/reports/${reportId}/dismiss`, {}, adminHeaders);
+      await axios.patch(`http://localhost:3001/admin/reports/${reportId}/dismiss`, {}, adminHeaders);
       setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'DISMISSED' } : r));
     } catch (err) { console.error(err); }
   };
@@ -49,7 +49,7 @@ export default function AdminDashboard() {
   const removePost = async (reportId) => {
     if(!window.confirm("Bu ilanı kalıcı olarak silmek istediğinize emin misiniz?")) return;
     try {
-      await axios.patch(`http://localhost:3000/admin/reports/${reportId}/remove-post`, {}, adminHeaders);
+      await axios.patch(`http://localhost:3001/admin/reports/${reportId}/remove-post`, {}, adminHeaders);
       setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'REVIEWED' } : r));
       alert("İlan silindi.");
     } catch (err) { console.error(err); alert("Silme başarısız."); }

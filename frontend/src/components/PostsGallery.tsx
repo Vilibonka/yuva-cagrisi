@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Bone, Filter, Image as ImageIcon, Info, MapPin } from 'lucide-react';
+import { Info, MapPin, Bone, Filter, Image as ImageIcon } from 'lucide-react';
 import api from '@/api';
 import FavoriteButton from './FavoriteButton';
+import { useAuth } from '@/context/AuthContext';
 
 interface Post {
   id: string;
@@ -18,9 +19,11 @@ interface Post {
     imageUrl: string;
     isPrimary: boolean;
   }>;
+  ownerUserId: string;
 }
 
 export default function PostsGallery() {
+  const { user } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -159,7 +162,7 @@ export default function PostsGallery() {
                     </div>
                   </Link>
                   <div className="absolute top-4 right-4 z-10">
-                    <FavoriteButton postId={post.id} />
+                    {user?.id !== post.ownerUserId && <FavoriteButton postId={post.id} />}
                   </div>
                 </div>
               );

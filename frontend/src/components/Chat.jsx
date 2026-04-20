@@ -13,7 +13,7 @@ export default function Chat({ conversationId, currentUserId }) {
     // 1. Fetch initial messages
     const fetchMessages = async () => {
       try {
-        const res = await axios.get(`http://localhost:3000/conversations/${conversationId}/messages`);
+        const res = await axios.get(`http://localhost:3001/conversations/${conversationId}/messages`);
         setMessages(res.data);
       } catch (err) {
         console.error("Error fetching messages:", err);
@@ -22,7 +22,7 @@ export default function Chat({ conversationId, currentUserId }) {
     fetchMessages();
 
     // 2. Initialize Socket Connection
-    const newSocket = io('http://localhost:3000');
+    const newSocket = io('http://localhost:3001');
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
@@ -52,7 +52,7 @@ export default function Chat({ conversationId, currentUserId }) {
 
   const softDelete = async (messageId) => {
     try {
-      await axios.patch(`http://localhost:3000/conversations/messages/${messageId}/soft-delete`);
+      await axios.patch(`http://localhost:3001/conversations/messages/${messageId}/soft-delete`);
       // Update local state instantly for better UX
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, status: 'DELETED', content: 'This message was deleted' } : m));
     } catch(err) {

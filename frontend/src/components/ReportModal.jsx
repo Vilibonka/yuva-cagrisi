@@ -15,7 +15,7 @@ export default function ReportModal({ postId, isOpen, onClose }) {
     e.preventDefault();
     setStatus('LOADING');
     try {
-      await axios.post(`http://localhost:3000/reports/${postId}`, { reason, description });
+      await axios.post(`http://localhost:3001/reports/${postId}`, { reason, description });
       setStatus('SUCCESS');
       setTimeout(() => onClose(), 2000);
     } catch (err) {

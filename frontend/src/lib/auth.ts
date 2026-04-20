@@ -8,7 +8,11 @@ function canUseStorage() {
 
 export function getStoredAccessToken() {
   if (!canUseStorage()) return null;
-  return window.localStorage.getItem(ACCESS_TOKEN_KEY);
+  const token = window.localStorage.getItem(ACCESS_TOKEN_KEY);
+  if (token && typeof document !== 'undefined') {
+    document.cookie = `accessToken=${token}; path=/; max-age=604800; SameSite=Lax`;
+  }
+  return token;
 }
 
 export function getStoredRefreshToken() {
@@ -37,7 +41,10 @@ export interface AuthSession {
 export function storeAuthSession({ accessToken, refreshToken, user }: AuthSession) {
   if (!canUseStorage()) return;
 
-  if (accessToken) window.localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  if (accessToken) {
+    window.localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+    document.cookie = `accessToken=${accessToken}; path=/; max-age=604800; SameSite=Lax`;
+  }
   if (refreshToken) window.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
   if (user) window.localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
 }
@@ -47,4 +54,7 @@ export function clearAuthSession() {
   window.localStorage.removeItem(ACCESS_TOKEN_KEY);
   window.localStorage.removeItem(REFRESH_TOKEN_KEY);
   window.localStorage.removeItem(AUTH_USER_KEY);
+  if (typeof document !== 'undefined') {
+    document.cookie = `accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  }
 }

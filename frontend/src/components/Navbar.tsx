@@ -27,8 +27,8 @@ export default function Navbar() {
         <div className="flex items-center gap-4">
           {isAuthenticated ? (
             <div className="flex items-center gap-6">
-              <Link href="/profile/favorites" className="text-gray-500 transition hover:text-red-500" title="Favorilerim">
-                <Heart className="h-6 w-6" />
+              <Link href="/profile/favorites" className="text-sm font-semibold text-gray-600 transition hover:text-orange-600" title="Favori İlanlarım">
+                Favori İlanlarım
               </Link>
               <div className="group relative">
                 <button className="flex items-center gap-2 rounded-full bg-gray-100 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-200">

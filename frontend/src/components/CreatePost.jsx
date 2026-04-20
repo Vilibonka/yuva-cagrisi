@@ -67,11 +67,7 @@ export default function CreatePost() {
       });
       images.forEach((image) => payload.append('images', image));
 
-      await api.post('/pet-posts', payload, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      await api.post('/pet-posts', payload);
 
       router.push('/posts');
     } catch (err) {

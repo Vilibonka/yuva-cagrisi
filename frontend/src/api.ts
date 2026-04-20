@@ -29,7 +29,7 @@ api.interceptors.response.use(
 
       if (refreshToken && user) {
         try {
-          const { data } = await axios.post('http://localhost:3000/auth/refresh', {
+          const { data } = await axios.post('http://localhost:3001/auth/refresh', {
             userId: user.id,
             refreshToken,
           });

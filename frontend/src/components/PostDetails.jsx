@@ -20,6 +20,7 @@ import RequestStatusTimeline from '@/components/RequestStatusTimeline';
 import { getStoredUser } from '@/lib/auth';
 import Chat from './Chat';
 import ReportModal from './ReportModal';
+import FavoriteButton from './FavoriteButton';
 
 function formatDate(value) {
   if (!value) {
@@ -61,6 +62,7 @@ export default function PostDetails() {
   const [actionError, setActionError] = useState(null);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, type: '', status: '', title: '', message: '', requestId: null });
   const [formState, setFormState] = useState({
     message: '',
     housingType: '',
@@ -211,49 +213,66 @@ export default function PostDetails() {
     }
   };
 
-  const handleReview = async (requestId, status) => {
-    const confirmationMessage = status === 'APPROVED'
-      ? 'Bu basvuruyu onaylamak istediginize emin misiniz?'
-      : 'Bu basvuruyu reddetmek istediginize emin misiniz?';
+  const requestReview = (requestId, status) => {
+    const message = status === 'APPROVED'
+      ? 'Bu başvuruyu onaylamak istediğinize emin misiniz? Diğer bekleyen başvurular reddedilebilir.'
+      : 'Bu başvuruyu reddetmek istediğinize emin misiniz?';
+    const title = status === 'APPROVED' ? 'Başvuruyu Onayla' : 'Başvuruyu Reddet';
 
-    if (!window.confirm(confirmationMessage)) {
-      return;
-    }
-
-    setReviewingRequestId(requestId);
-    setActionError(null);
-
-    try {
-      await api.patch(`/adoption-requests/${requestId}/status`, { status });
-      await Promise.all([fetchPost(), fetchOwnerRequests()]);
-    } catch (err) {
-      const message = err.response?.data?.message;
-      setActionError(Array.isArray(message) ? message.join(', ') : message || 'Basvuru durumu guncellenemedi.');
-    } finally {
-      setReviewingRequestId(null);
-    }
+    setConfirmDialog({
+      isOpen: true,
+      type: 'REVIEW',
+      status,
+      title,
+      message,
+      requestId,
+    });
   };
 
-  const handlePostStatusUpdate = async (status) => {
-    const confirmationMessage = status === 'ADOPTED'
-      ? 'Ilani manuel olarak sahiplendirildi durumuna almak istediginize emin misiniz?'
-      : 'Ilani kapatmak istediginize emin misiniz?';
+  const requestPostStatusUpdate = (status) => {
+    const message = status === 'ADOPTED'
+      ? 'İlanı manuel olarak sahiplendirildi durumuna almak istediğinize emin misiniz? Bu işlem geri alınamaz.'
+      : 'İlanı kapatmak istediğinize emin misiniz? İlgili tüm başvurular reddedilmiş sayılacaktır.';
+    const title = status === 'ADOPTED' ? 'İlanı Sahiplendir' : 'İlanı Kapat';
 
-    if (!window.confirm(confirmationMessage)) {
-      return;
-    }
+    setConfirmDialog({
+      isOpen: true,
+      type: 'POST_STATUS',
+      status,
+      title,
+      message,
+      requestId: null,
+    });
+  };
 
-    setUpdatingPostStatus(true);
-    setActionError(null);
+  const executeConfirmAction = async () => {
+    const { type, status, requestId } = confirmDialog;
+    setConfirmDialog({ ...confirmDialog, isOpen: false });
 
-    try {
-      const response = await api.patch(`/pet-posts/${postId}/status`, { status });
-      setPost(response.data);
-    } catch (err) {
-      const message = err.response?.data?.message;
-      setActionError(Array.isArray(message) ? message.join(', ') : message || 'Ilan durumu guncellenemedi.');
-    } finally {
-      setUpdatingPostStatus(false);
+    if (type === 'POST_STATUS') {
+      setUpdatingPostStatus(true);
+      setActionError(null);
+      try {
+        const response = await api.patch(`/pet-posts/${postId}/status`, { status });
+        setPost(response.data);
+      } catch (err) {
+        const message = err.response?.data?.message;
+        setActionError(Array.isArray(message) ? message.join(', ') : message || 'İlan durumu güncellenemedi.');
+      } finally {
+        setUpdatingPostStatus(false);
+      }
+    } else if (type === 'REVIEW') {
+      setReviewingRequestId(requestId);
+      setActionError(null);
+      try {
+        await api.patch(`/adoption-requests/${requestId}/status`, { status });
+        await Promise.all([fetchPost(), fetchOwnerRequests()]);
+      } catch (err) {
+        const message = err.response?.data?.message;
+        setActionError(Array.isArray(message) ? message.join(', ') : message || 'Başvuru durumu güncellenemedi.');
+      } finally {
+        setReviewingRequestId(null);
+      }
     }
   };
 
@@ -307,7 +326,10 @@ export default function PostDetails() {
               </span>
               <span className="text-sm text-gray-400">{formatDate(post.createdAt)}</span>
             </div>
-            <h1 className="text-3xl font-extrabold text-gray-800">{post.title}</h1>
+            <div className="mt-4 flex items-start justify-between gap-4">
+              <h1 className="text-3xl font-extrabold text-gray-800">{post.title}</h1>
+              {!isOwner && <FavoriteButton postId={post.id} />}
+            </div>
             <div className="mt-2 flex items-center gap-2 font-medium text-gray-500">
               <MapPin className="h-5 w-5" /> {post.city}
             </div>
@@ -353,7 +375,7 @@ export default function PostDetails() {
               <div className="space-y-4">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <button
-                    onClick={() => handlePostStatusUpdate('ADOPTED')}
+                    onClick={() => requestPostStatusUpdate('ADOPTED')}
                     disabled={updatingPostStatus || post.status !== 'ACTIVE'}
                     className="rounded-2xl bg-emerald-600 px-4 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
                   >
@@ -362,7 +384,7 @@ export default function PostDetails() {
                     </span>
                   </button>
                   <button
-                    onClick={() => handlePostStatusUpdate('CLOSED')}
+                    onClick={() => requestPostStatusUpdate('CLOSED')}
                     disabled={updatingPostStatus || post.status !== 'ACTIVE'}
                     className="rounded-2xl bg-gray-800 px-4 py-3 font-semibold text-white transition hover:bg-gray-900 disabled:cursor-not-allowed disabled:bg-gray-400"
                   >
@@ -425,7 +447,7 @@ export default function PostDetails() {
                       {request.status === 'PENDING' && post.status === 'ACTIVE' && (
                         <div className="mt-5 flex flex-col gap-3 sm:flex-row">
                           <button
-                            onClick={() => handleReview(request.id, 'APPROVED')}
+                            onClick={() => requestReview(request.id, 'APPROVED')}
                             disabled={reviewingRequestId === request.id}
                             className="flex-1 rounded-2xl bg-emerald-600 px-4 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
                           >
@@ -434,7 +456,7 @@ export default function PostDetails() {
                             </span>
                           </button>
                           <button
-                            onClick={() => handleReview(request.id, 'REJECTED')}
+                            onClick={() => requestReview(request.id, 'REJECTED')}
                             disabled={reviewingRequestId === request.id}
                             className="flex-1 rounded-2xl bg-rose-600 px-4 py-3 font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-rose-300"
                           >
@@ -622,6 +644,31 @@ export default function PostDetails() {
       </div>
 
       <ReportModal postId={postId} isOpen={isReportOpen} onClose={() => setIsReportOpen(false)} />
+
+      {confirmDialog.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-gray-900">{confirmDialog.title}</h3>
+              <p className="mt-2 text-sm text-gray-600">{confirmDialog.message}</p>
+            </div>
+            <div className="flex items-center justify-end gap-3 bg-gray-50 px-6 py-4">
+              <button
+                onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+                className="rounded-full px-5 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-200"
+              >
+                İptal
+              </button>
+              <button
+                onClick={executeConfirmAction}
+                className="rounded-full bg-orange-600 px-5 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-orange-700"
+              >
+                Evet, Onaylıyorum
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

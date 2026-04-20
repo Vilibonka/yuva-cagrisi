@@ -21,7 +21,7 @@ export class UsersService {
     async findById(id: string) {
         return this.prisma.user.findUnique({
             where: { id },
-            select: { id: true, fullName: true, email: true, contactPhone: true, city: true, district: true, biography: true, role: true, createdAt: true, isActive: true }
+            select: { id: true, fullName: true, email: true, contactPhone: true, city: true, district: true, biography: true, role: true, createdAt: true, isActive: true, profileImageUrl: true }
         });
     }
 
@@ -29,7 +29,7 @@ export class UsersService {
         return this.prisma.user.update({
             where: { id },
             data,
-            select: { id: true, fullName: true, email: true, contactPhone: true, city: true, district: true, biography: true }
+            select: { id: true, fullName: true, email: true, contactPhone: true, city: true, district: true, biography: true, profileImageUrl: true }
         });
     }
 
