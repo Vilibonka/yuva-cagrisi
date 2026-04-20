@@ -270,7 +270,7 @@ export default function PostDetails() {
   }
 
   const primaryImage = getPrimaryImage(post);
-  const imageUrl = primaryImage ? `http://localhost:3000${primaryImage.imageUrl}` : null;
+  const imageUrl = primaryImage ? `http://localhost:3001${primaryImage.imageUrl}` : null;
   const isOwner = Boolean(currentUser && currentUser.id === post.ownerUserId);
 
   return (

@@ -16,7 +16,7 @@ export class PetPostsService {
           species: createPetPostDto.species,
           breed: createPetPostDto.breed,
           gender: createPetPostDto.gender,
-          estimatedAgeMonths: createPetPostDto.estimatedAgeMonths,
+          estimatedAgeMonths: createPetPostDto.estimatedAgeMonths ? parseInt(createPetPostDto.estimatedAgeMonths as any, 10) : null,
           size: createPetPostDto.size,
           healthSummary: createPetPostDto.healthSummary,
           temperament: createPetPostDto.temperament,
@@ -91,7 +91,7 @@ export class PetPostsService {
         pet: true,
         images: true,
         owner: {
-          select: { id: true, fullName: true, profileImageUrl: true, phone: true, email: true },
+          select: { id: true, fullName: true, profileImageUrl: true, contactPhone: true, email: true },
         },
       },
     });

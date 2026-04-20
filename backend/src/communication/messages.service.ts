@@ -80,4 +80,47 @@ export class MessagesService {
       include: { sender: { select: { id: true, fullName: true } } }
     });
   }
+
+  async findOrCreateConversation(userId: string, targetUserId: string, postId?: string) {
+    if (userId === targetUserId) {
+      throw new ForbiddenException('You cannot start a conversation with yourself');
+    }
+
+    const whereClause: any = {
+      AND: [
+        { participants: { some: { userId } } },
+        { participants: { some: { userId: targetUserId } } }
+      ]
+    };
+
+    if (postId) {
+      whereClause.postId = postId;
+    } else {
+      whereClause.postId = null;
+    }
+
+    const existing = await this.prisma.conversation.findFirst({
+      where: whereClause,
+      include: { participants: true }
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    // Create new conversation
+    return this.prisma.conversation.create({
+      data: {
+        postId: postId || null,
+        type: postId ? 'POST_RELATED' : 'DIRECT',
+        participants: {
+          create: [
+            { userId },
+            { userId: targetUserId }
+          ]
+        }
+      },
+      include: { participants: true }
+    });
+  }
 }
