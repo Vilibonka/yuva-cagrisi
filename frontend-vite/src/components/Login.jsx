@@ -25,10 +25,12 @@ const Login = () => {
       if (token) {
         localStorage.setItem('accessToken', token);
         setSuccess(true);
-        // Yönlendirme simülasyonu
         setTimeout(() => {
-          // navigate('/dashboard'); 
-          console.log("Authenticated state updated.");
+          if (response.data.user?.role === 'ADMIN') {
+             navigate('/admin');
+          } else {
+             navigate('/posts'); 
+          }
         }, 1500);
       } else {
         setError('Giriş başarısız, token sunucudan alınamadı.');

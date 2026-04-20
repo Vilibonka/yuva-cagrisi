@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import api from '../api';
+import { useNavigate } from 'react-router-dom';
 
 const Registration = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -25,8 +27,12 @@ const Registration = () => {
 
     try {
       await api.post('/auth/register', formData);
-      setSuccess('Kayıt işlemi başarılı! Platforma hoş geldiniz, şimdi giriş yapabilirsiniz.');
+      setSuccess('Kayıt işlemi başarılı! Platforma hoş geldiniz, giriş sayfasına yönlendiriliyorsunuz...');
       setFormData({ fullName: '', email: '', password: '', role: 'USER' });
+      
+      setTimeout(() => {
+         navigate('/login');
+      }, 2000);
     } catch (err) {
       if (err.response && err.response.data && err.response.data.message) {
         setError(Array.isArray(err.response.data.message) ? err.response.data.message.join(', ') : err.response.data.message);

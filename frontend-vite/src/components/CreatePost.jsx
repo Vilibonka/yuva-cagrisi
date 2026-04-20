@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { useNavigate } from 'react-router-dom';
 import { Camera, X, CheckCircle, AlertCircle } from 'lucide-react';
 
@@ -58,11 +58,9 @@ export default function CreatePost() {
         data.append('images', image);
       });
 
-      // Adjust backend URL to match your proxy or exact URL
-      await axios.post('http://localhost:3000/pet-posts', data, {
+      await api.post('/pet-posts', data, {
         headers: {
           'Content-Type': 'multipart/form-data'
-          // Add Authorization header here if implemented
         }
       });
       

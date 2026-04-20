@@ -1,16 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { Users, AlertOctagon, Trash2, ShieldAlert, CheckCircle, XCircle } from 'lucide-react';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('USERS');
   const [users, setUsers] = useState([]);
   const [reports, setReports] = useState([]);
-
-  // Mock Admin Headers
-  const adminHeaders = {
-    headers: { 'x-user-role': 'ADMIN' }
-  };
 
   useEffect(() => {
     fetchUsers();
@@ -19,28 +14,28 @@ export default function AdminDashboard() {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get('http://localhost:3000/admin/users', adminHeaders);
+      const res = await api.get('/admin/users');
       setUsers(res.data);
     } catch(err) { console.error(err); }
   };
 
   const fetchReports = async () => {
     try {
-      const res = await axios.get('http://localhost:3000/admin/reports', adminHeaders);
+      const res = await api.get('/admin/reports');
       setReports(res.data);
     } catch(err) { console.error(err); }
   };
 
   const toggleUserFreeze = async (userId) => {
     try {
-      await axios.patch(`http://localhost:3000/admin/users/${userId}/freeze`, {}, adminHeaders);
+      await api.patch(`/admin/users/${userId}/freeze`);
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, isActive: !u.isActive } : u));
     } catch (err) { console.error(err); alert("İşlem başarısız."); }
   };
 
   const dismissReport = async (reportId) => {
     try {
-      await axios.patch(`http://localhost:3000/admin/reports/${reportId}/dismiss`, {}, adminHeaders);
+      await api.patch(`/admin/reports/${reportId}/dismiss`);
       setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'DISMISSED' } : r));
     } catch (err) { console.error(err); }
   };
@@ -48,7 +43,7 @@ export default function AdminDashboard() {
   const removePost = async (reportId) => {
     if(!window.confirm("Bu ilanı kalıcı olarak silmek istediğinize emin misiniz?")) return;
     try {
-      await axios.patch(`http://localhost:3000/admin/reports/${reportId}/remove-post`, {}, adminHeaders);
+      await api.patch(`/admin/reports/${reportId}/remove-post`);
       setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'REVIEWED' } : r));
       alert("İlan silindi.");
     } catch (err) { console.error(err); alert("Silme başarısız."); }

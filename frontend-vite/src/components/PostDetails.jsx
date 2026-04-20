@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Bone, User, Info, CheckCircle, XCircle, AlertTriangle, MessageSquare } from 'lucide-react';
+import { ArrowLeft, MapPin, Bone, User, Info, CheckCircle, XCircle, AlertTriangle, MessageSquare, Heart } from 'lucide-react';
 import ReportModal from './ReportModal';
 import Chat from './Chat';
+import api from '../api';
+
+const parseJwt = (token) => {
+  try {
+    return JSON.parse(atob(token.split('.')[1]));
+  } catch (e) {
+    return null;
+  }
+};
 
 export default function PostDetails() {
   const { id } = useParams();
@@ -13,11 +22,20 @@ export default function PostDetails() {
   const [updating, setUpdating] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
-  // Mock checking if the current user is owner.
-  // Replace with actual user context in a real app.
-  // We assume this is only for illustration.
-  const currentUserId = "00000000-0000-0000-0000-000000000000";
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [conversationId, setConversationId] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      const decoded = parseJwt(token);
+      if (decoded && decoded.sub) {
+        setCurrentUserId(decoded.sub);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     // We didn't create a GET /pet-posts/:id endpoint in our simplified backend plan
@@ -39,15 +57,40 @@ export default function PostDetails() {
         setLoading(false);
       }
     };
+    
+    const checkSaved = async () => {
+      if(localStorage.getItem('accessToken')) {
+        try {
+          const res = await api.get('/users/me/saved-posts');
+          const saved = res.data.some(sp => sp.post.id === id);
+          setIsSaved(saved);
+        } catch(err) {}
+      }
+    };
+
     getPost();
+    checkSaved();
   }, [id]);
+
+  const toggleSave = async () => {
+    if (!currentUserId) {
+        alert("Favorilere eklemek için giriş yapmalısınız.");
+        navigate('/login');
+        return;
+    }
+    try {
+        const res = await api.post(`/users/me/saved-posts/${id}`);
+        setIsSaved(res.data.saved);
+    } catch(err) {
+        alert("İlan kaydedilemedi.");
+    }
+  };
 
   const updateStatus = async (newStatus) => {
     setUpdating(true);
     try {
-      await axios.patch(`http://localhost:3000/pet-posts/${id}/status`, { status: newStatus }, {
-        // Normally add auth headers
-      });
+      await api.patch(`/pet-posts/${id}/status`, { status: newStatus });
+
       setPost(prev => ({ ...prev, status: newStatus }));
       if (newStatus !== 'ACTIVE') {
         // Redirect since it's hidden from gallery now
@@ -58,6 +101,30 @@ export default function PostDetails() {
       alert("Durum güncellenirken bir hata oluştu.");
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleStartChat = async () => {
+    if (!currentUserId) {
+      alert("Mesajlaşmak için giriş yapmalısınız.");
+      navigate('/login');
+      return;
+    }
+    
+    if (!showChat) {
+      try {
+        const res = await api.post('/conversations', {
+          targetUserId: post.ownerUserId,
+          postId: post.id
+        });
+        setConversationId(res.data.id);
+        setShowChat(true);
+      } catch (err) {
+        console.error(err);
+        alert("Sohbet başlatılamadı.");
+      }
+    } else {
+      setShowChat(false);
     }
   };
 
@@ -138,15 +205,19 @@ export default function PostDetails() {
                   </button>
                 </div>
              ) : (
-                <div className="flex flex-col gap-4">
-                  <button onClick={() => setShowChat(!showChat)} className="w-full py-4 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold shadow-lg shadow-orange-600/20 transition flex items-center justify-center gap-2">
-                    <MessageSquare className="w-5 h-5" /> {showChat ? 'Sohbeti Gizle' : 'Sahibi ile İletişime Geç'}
-                  </button>
+                 <div className="flex flex-col gap-4">
+                  <div className="flex gap-2">
+                    <button onClick={handleStartChat} className="flex-1 py-4 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold shadow-lg shadow-orange-600/20 transition flex items-center justify-center gap-2">
+                      <MessageSquare className="w-5 h-5" /> {showChat ? 'Sohbeti Gizle' : 'Sahibiyle Görüş'}
+                    </button>
+                    <button onClick={toggleSave} className={`px-5 rounded-xl border flex items-center justify-center transition ${isSaved ? 'border-red-200 bg-red-50 text-red-500 hover:bg-red-100' : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-red-500'}`}>
+                      <Heart className={`w-7 h-7 ${isSaved ? 'fill-red-500' : ''}`} />
+                    </button>
+                  </div>
                   
-                  {showChat && (
+                  {showChat && conversationId && (
                      <div className="mt-4 border-t pt-4">
-                        {/* Assuming conversation ID is constructed dynamically or exists. For demo passing a dummy */}
-                        <Chat conversationId={`conv-${id}`} currentUserId={currentUserId} />
+                        <Chat conversationId={conversationId} currentUserId={currentUserId} />
                      </div>
                   )}
                 </div>

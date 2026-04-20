@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { io } from 'socket.io-client';
 import { Send, Trash2, ShieldAlert } from 'lucide-react';
 
@@ -9,10 +9,9 @@ export default function Chat({ conversationId, currentUserId }) {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    // 1. Fetch initial messages
     const fetchMessages = async () => {
       try {
-        const res = await axios.get(`http://localhost:3000/conversations/${conversationId}/messages`);
+        const res = await api.get(`/conversations/${conversationId}/messages`);
         setMessages(res.data);
       } catch (err) {
         console.error("Error fetching messages:", err);
@@ -20,8 +19,10 @@ export default function Chat({ conversationId, currentUserId }) {
     };
     fetchMessages();
 
-    // 2. Initialize Socket Connection
-    const newSocket = io('http://localhost:3000');
+    const token = localStorage.getItem('accessToken');
+    const newSocket = io('http://localhost:3000', {
+      auth: { token }
+    });
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
@@ -51,8 +52,7 @@ export default function Chat({ conversationId, currentUserId }) {
 
   const softDelete = async (messageId) => {
     try {
-      await axios.patch(`http://localhost:3000/conversations/messages/${messageId}/soft-delete`);
-      // Update local state instantly for better UX
+      await api.patch(`/conversations/messages/${messageId}/soft-delete`);
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, status: 'DELETED', content: 'This message was deleted' } : m));
     } catch(err) {
       console.error("Cannot delete message", err);
