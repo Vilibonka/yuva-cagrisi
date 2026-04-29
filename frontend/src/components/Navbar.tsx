@@ -19,7 +19,7 @@ export default function Navbar() {
 
         <nav className="hidden items-center gap-8 md:flex">
           <Link href="/posts" className="text-sm font-semibold text-gray-600 transition hover:text-orange-600">İlanlar</Link>
-          <Link href="/create-post" className="flex items-center gap-1 text-sm font-semibold text-gray-600 transition hover:text-orange-600">
+          <Link href="/listings/create" className="flex items-center gap-1 text-sm font-semibold text-gray-600 transition hover:text-orange-600">
             <PlusSquare className="h-4 w-4" /> İlan Ver
           </Link>
         </nav>

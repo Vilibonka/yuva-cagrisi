@@ -8,8 +8,6 @@ import { CommunicationModule } from "./communication/communication.module";
 import { ReportsModule } from "./reports/reports.module";
 import { AdminModule } from "./admin/admin.module";
 import { AdoptionRequestsModule } from "./adoption-requests/adoption-requests.module";
-import { ServeStaticModule } from "@nestjs/serve-static";
-import { join } from "path";
 
 @Module({
   imports: [
@@ -21,10 +19,6 @@ import { join } from "path";
     CommunicationModule,
     ReportsModule,
     AdminModule,
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'uploads'),
-      serveRoot: '/uploads',
-    })
   ],
   controllers: [AppController],
 })

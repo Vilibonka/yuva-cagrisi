@@ -9,12 +9,12 @@ export class UsersController {
 
     @Get('me')
     async getProfile(@Req() req: any) {
-        return this.usersService.findById(req.user.sub);
+        return this.usersService.findById(req.user.id);
     }
 
     @Patch('me')
     async updateProfile(@Req() req: any, @Body() body: any) {
-        return this.usersService.updateProfile(req.user.sub, {
+        return this.usersService.updateProfile(req.user.id, {
             fullName: body.fullName,
             contactPhone: body.contactPhone,
             city: body.city,
@@ -25,11 +25,11 @@ export class UsersController {
 
     @Get('me/saved-posts')
     async getSavedPosts(@Req() req: any) {
-        return this.usersService.getSavedPosts(req.user.sub);
+        return this.usersService.getSavedPosts(req.user.id);
     }
 
     @Post('me/saved-posts/:postId')
     async toggleSavedPost(@Req() req: any, @Param('postId') postId: string) {
-        return this.usersService.toggleSavedPost(req.user.sub, postId);
+        return this.usersService.toggleSavedPost(req.user.id, postId);
     }
 }

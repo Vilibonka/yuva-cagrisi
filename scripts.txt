@@ -1,0 +1,15 @@
+Docker:
+cd C:\Users\Enes\Documents\GitHub\yuva-cagrisi\backend
+npm run db:up
+ 
+Backend: 
+cd C:\Users\Enes\Documents\GitHub\yuva-cagrisi\backend
+npm run start:dev
+
+Frontend:
+cd C:\Users\Enes\Documents\GitHub\yuva-cagrisi\frontend
+npm run dev
+
+prisma: 
+cd C:\Users\Enes\Documents\GitHub\yuva-cagrisi\backend
+npx prisma studio

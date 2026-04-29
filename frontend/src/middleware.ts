@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Protected routes that require authentication
-const protectedRoutes = ['/profile', '/profile/settings', '/profile/favorites', '/create-post'];
+const protectedRoutes = ['/profile', '/profile/settings', '/profile/favorites', '/listings/create'];
 
 // Auth routes that should not be accessible when logged in
 const authRoutes = ['/login', '/register'];
@@ -31,5 +31,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/profile/:path*', '/create-post', '/login', '/register'],
+  matcher: ['/profile/:path*', '/listings/create', '/login', '/register'],
 };

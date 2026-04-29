@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Heart } from 'lucide-react';
 import api from '@/api';
 import { useAuth } from '@/context/AuthContext';
@@ -12,21 +12,33 @@ interface FavoriteButtonProps {
 }
 
 export default function FavoriteButton({ postId, initialIsFavorited = false }: FavoriteButtonProps) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [isFavorited, setIsFavorited] = useState(initialIsFavorited);
   const [loading, setLoading] = useState(false);
+  const [checked, setChecked] = useState(false);
   const router = useRouter();
 
+  // Check if this post is already favorited on mount
   useEffect(() => {
-    // If we have access to user data, check if this post is in their savedPosts
-    if (user?.savedPosts) {
-      const match = user.savedPosts.some((fav: any) => fav.postId === postId);
-      setIsFavorited(match);
-    }
-  }, [user, postId]);
+    if (!isAuthenticated || checked) return;
+
+    const checkFavoriteStatus = async () => {
+      try {
+        const { data } = await api.get('/users/me/saved-posts');
+        const isSaved = data.some((fav: any) => fav.postId === postId);
+        setIsFavorited(isSaved);
+      } catch {
+        // Silently fail - just show as not favorited
+      } finally {
+        setChecked(true);
+      }
+    };
+
+    checkFavoriteStatus();
+  }, [isAuthenticated, postId, checked]);
 
   const toggleFavorite = async (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent link click if nested
+    e.preventDefault();
     e.stopPropagation();
 
     if (!isAuthenticated) {
@@ -50,13 +62,13 @@ export default function FavoriteButton({ postId, initialIsFavorited = false }: F
       onClick={toggleFavorite}
       disabled={loading}
       className={`rounded-full p-2 transition-all duration-300 ${
-        isFavorited 
-          ? 'bg-red-500 text-white shadow-lg' 
+        isFavorited
+          ? 'bg-red-500 text-white shadow-lg shadow-red-500/30 scale-110'
           : 'bg-white/80 text-gray-600 hover:text-red-500 hover:shadow-md'
-      } backdrop-blur-sm group-hover:scale-110`}
-      aria-label="Favorilere Ekle"
+      } backdrop-blur-sm`}
+      aria-label={isFavorited ? 'Favorilerden kaldır' : 'Favorilere ekle'}
     >
-      <Heart className={`h-5 w-5 ${isFavorited ? 'fill-current' : ''}`} />
+      <Heart className={`h-5 w-5 transition-transform ${isFavorited ? 'fill-current' : ''} ${loading ? 'animate-pulse' : ''}`} />
     </button>
   );
 }
