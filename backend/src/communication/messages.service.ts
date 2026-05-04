@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { MessageStatus } from '@prisma/client';
 
 @Injectable()
 export class MessagesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService
+  ) {}
 
   async createMessage(senderUserId: string, conversationId: string, content: string) {
     const conversation = await this.prisma.conversation.findUnique({
@@ -36,6 +40,15 @@ export class MessagesService {
       where: { id: conversationId },
       data: { lastMessageAt: new Date() }
     });
+
+    // Send notifications to other participants
+    const otherParticipants = conversation.participants.filter(p => p.userId !== senderUserId);
+    for (const participant of otherParticipants) {
+      await this.notificationsService.createNewMessageNotification(
+        participant.userId,
+        message.sender.fullName
+      );
+    }
 
     return message;
   }
@@ -81,6 +94,34 @@ export class MessagesService {
     });
   }
 
+  async getUserConversations(userId: string) {
+    return this.prisma.conversation.findMany({
+      where: {
+        participants: { some: { userId } }
+      },
+      include: {
+        participants: {
+          include: {
+            user: {
+              select: { id: true, fullName: true, profileImageUrl: true }
+            }
+          }
+        },
+        post: {
+          select: { id: true, title: true }
+        },
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { content: true, createdAt: true, status: true, senderUserId: true }
+        }
+      },
+      orderBy: {
+        lastMessageAt: 'desc'
+      }
+    });
+  }
+
   async findOrCreateConversation(userId: string, targetUserId: string, postId?: string) {
     if (userId === targetUserId) {
       throw new ForbiddenException('You cannot start a conversation with yourself');
@@ -121,6 +162,39 @@ export class MessagesService {
         }
       },
       include: { participants: true }
+    });
+  }
+
+  async getUnreadCount(userId: string) {
+    return this.prisma.message.count({
+      where: {
+        conversation: {
+          participants: { some: { userId } }
+        },
+        senderUserId: { not: userId },
+        status: MessageStatus.SENT
+      }
+    });
+  }
+
+  async markConversationAsRead(userId: string, conversationId: string) {
+    // Check if participant
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: { participants: true }
+    });
+
+    if (!conversation || !conversation.participants.some(p => p.userId === userId)) {
+      throw new ForbiddenException('Cannot access conversation');
+    }
+
+    return this.prisma.message.updateMany({
+      where: {
+        conversationId,
+        senderUserId: { not: userId },
+        status: MessageStatus.SENT
+      },
+      data: { status: MessageStatus.READ }
     });
   }
 }

@@ -2,17 +2,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  AlertTriangle,
-  ArrowLeft,
-  Bone,
-  CheckCircle2,
-  Home,
-  Info,
-  MapPin,
-  MessageSquare,
-  Phone,
-  User,
-  XCircle,
+  AlertTriangle, ArrowLeft, Bone, CheckCircle2, Home, Info, MapPin,
+  MessageSquare, Phone, User, XCircle, Clock3, Heart, PawPrint, Shield,
+  ChevronLeft, Loader2, Users, Calendar,
 } from 'lucide-react';
 import api from '@/api';
 import RequestStatusBadge from '@/components/RequestStatusBadge';
@@ -35,12 +27,18 @@ function getPrimaryImage(post) {
 
 function RequestFact({ label, value }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-600">
-      <div className="text-xs uppercase tracking-wide text-gray-400">{label}</div>
-      <div className="mt-2 font-medium text-gray-800">{value || '-'}</div>
+    <div className="rounded-xl bg-white p-3.5 ring-1 ring-gray-100 text-sm">
+      <div className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1">{label}</div>
+      <div className="font-semibold text-gray-800">{value || '-'}</div>
     </div>
   );
 }
+
+const speciesMap = { DOG: '🐕 Köpek', CAT: '🐈 Kedi', BIRD: '🐦 Kuş', RABBIT: '🐇 Tavşan', OTHER: '🐾 Diğer' };
+const genderMap = { MALE: 'Erkek', FEMALE: 'Dişi' };
+const sizeMap = { SMALL: 'Küçük', MEDIUM: 'Orta', LARGE: 'Büyük' };
+const statusLabel = { ACTIVE: 'Aktif', ADOPTED: 'Sahiplendirildi', CLOSED: 'Kapatıldı' };
+const statusColor = { ACTIVE: 'bg-emerald-50 text-emerald-700 ring-emerald-200', ADOPTED: 'bg-blue-50 text-blue-700 ring-blue-200', CLOSED: 'bg-gray-100 text-gray-600 ring-gray-200' };
 
 export default function PostDetails() {
   const params = useParams();
@@ -61,6 +59,8 @@ export default function PostDetails() {
   const [actionError, setActionError] = useState(null);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [activeConversationId, setActiveConversationId] = useState(null);
+  const [loadingChat, setLoadingChat] = useState(false);
   const [formState, setFormState] = useState({
     message: '',
     housingType: '',
@@ -258,15 +258,27 @@ export default function PostDetails() {
   };
 
   if (loadingPost) {
-    return <div className="mx-auto w-full max-w-5xl rounded-2xl bg-white p-12 text-center shadow-sm">Ilan yukleniyor...</div>;
+    return (
+      <div className="mx-auto w-full max-w-5xl flex items-center justify-center py-24">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+          <span className="text-gray-400 text-sm font-medium">İlan yükleniyor...</span>
+        </div>
+      </div>
+    );
   }
 
   if (pageError) {
-    return <div className="mx-auto w-full max-w-5xl rounded-2xl border border-rose-200 bg-rose-50 p-8 text-rose-700">{pageError}</div>;
+    return <div className="mx-auto w-full max-w-5xl rounded-2xl border border-rose-200 bg-rose-50 p-8 text-sm text-rose-700">{pageError}</div>;
   }
 
   if (!post) {
-    return <div className="mx-auto w-full max-w-5xl rounded-2xl bg-white p-12 text-center text-red-500 shadow-sm">Ilan bulunamadi.</div>;
+    return (
+      <div className="mx-auto w-full max-w-5xl rounded-2xl bg-white p-12 text-center shadow-sm">
+        <PawPrint className="mx-auto mb-3 w-10 h-10 text-gray-300" />
+        <p className="text-gray-500 font-medium">İlan bulunamadı.</p>
+      </div>
+    );
   }
 
   const primaryImage = getPrimaryImage(post);
@@ -274,112 +286,150 @@ export default function PostDetails() {
   const isOwner = Boolean(currentUser && currentUser.id === post.ownerUserId);
 
   return (
-    <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-3xl bg-white shadow-xl ring-1 ring-gray-100">
-      <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
-        <button onClick={() => router.back()} className="flex items-center gap-2 font-medium text-gray-500 transition hover:text-orange-600">
-          <ArrowLeft className="h-5 w-5" /> Geri Don
+    <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-2xl bg-white shadow-xl shadow-gray-200/50 ring-1 ring-gray-200/60 my-4">
+      {/* Top Bar */}
+      <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-white">
+        <button onClick={() => router.back()} className="flex items-center gap-2 text-sm font-semibold text-gray-500 transition hover:text-orange-600 rounded-xl px-3 py-2 hover:bg-gray-50">
+          <ChevronLeft className="h-4 w-4" /> Geri Dön
         </button>
-        {!isOwner && (
-          <button onClick={() => setIsReportOpen(true)} className="flex items-center gap-2 text-sm font-bold text-red-400 transition hover:text-red-600">
-            <AlertTriangle className="h-4 w-4" /> Ilani Sikayet Et
-          </button>
-        )}
-      </div>
-
-      <div className="grid gap-8 p-8 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-4">
-          {imageUrl ? (
-            <div className="relative h-96 overflow-hidden rounded-3xl border border-gray-200 bg-gray-100 shadow-inner">
-              <img src={imageUrl} alt={post.title} className="h-full w-full object-cover" />
-            </div>
-          ) : (
-            <div className="flex h-96 items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 bg-gray-50 text-gray-400">
-              Gorsel eklenmemis
-            </div>
+        <div className="flex items-center gap-3">
+          {!isOwner && (
+            <button onClick={() => setIsReportOpen(true)} className="flex items-center gap-1.5 text-xs font-bold text-gray-400 transition hover:text-red-500 rounded-lg px-3 py-2 hover:bg-red-50">
+              <AlertTriangle className="h-3.5 w-3.5" /> Şikâyet Et
+            </button>
           )}
         </div>
+      </div>
 
-        <div className="space-y-6">
+      <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
+        {/* Left: Image */}
+        <div className="relative bg-gray-100">
+          {imageUrl ? (
+            <div className="relative h-80 lg:h-full min-h-[400px] overflow-hidden">
+              <img src={imageUrl} alt={post.title} className="h-full w-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+            </div>
+          ) : (
+            <div className="flex h-80 lg:h-full min-h-[400px] items-center justify-center bg-gray-50">
+              <div className="text-center">
+                <PawPrint className="mx-auto w-12 h-12 text-gray-300 mb-2" />
+                <p className="text-sm text-gray-400">Görsel eklenmemiş</p>
+              </div>
+            </div>
+          )}
+          {/* Status Badge on Image */}
+          <div className={`absolute top-4 left-4 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold ring-1 ${statusColor[post.status] || 'bg-gray-100 text-gray-600 ring-gray-200'}`}>
+            {statusLabel[post.status] || post.status}
+          </div>
+          {/* Species Badge */}
+          <div className="absolute top-4 right-4 rounded-lg bg-white/90 backdrop-blur-sm px-3 py-1.5 text-xs font-bold text-gray-700 shadow-sm">
+            {speciesMap[post.pet?.species] || '🐾 Hayvan'}
+          </div>
+        </div>
+
+        {/* Right: Details */}
+        <div className="p-6 lg:p-8 space-y-5 overflow-y-auto max-h-[calc(100vh-160px)]">
+          {/* Title & Location */}
           <div>
-            <div className="mb-2 flex items-center justify-between">
-              <span className={`rounded-full px-3 py-1 text-xs font-bold ${post.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                {post.status}
+            <h1 className="text-2xl font-extrabold text-gray-900 leading-tight">{post.title}</h1>
+            <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-gray-400">
+              <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {post.city}</span>
+              <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> {formatDate(post.createdAt)}</span>
+            </div>
+          </div>
+
+          {/* Pet Info Pills */}
+          <div className="flex flex-wrap gap-2">
+            {post.pet?.breed && (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-700">
+                <Bone className="w-3 h-3" /> {post.pet.breed}
               </span>
-              <span className="text-sm text-gray-400">{formatDate(post.createdAt)}</span>
-            </div>
-            <h1 className="text-3xl font-extrabold text-gray-800">{post.title}</h1>
-            <div className="mt-2 flex items-center gap-2 font-medium text-gray-500">
-              <MapPin className="h-5 w-5" /> {post.city}
-            </div>
+            )}
+            {post.pet?.gender && (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-purple-50 px-3 py-1.5 text-xs font-bold text-purple-700">
+                {genderMap[post.pet.gender] || post.pet.gender}
+              </span>
+            )}
+            {post.pet?.size && (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">
+                {sizeMap[post.pet.size] || post.pet.size}
+              </span>
+            )}
+            {post.pet?.estimatedAgeMonths && (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-teal-50 px-3 py-1.5 text-xs font-bold text-teal-700">
+                <Clock3 className="w-3 h-3" /> {post.pet.estimatedAgeMonths} aylık
+              </span>
+            )}
           </div>
 
-          <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-            <h4 className="mb-3 flex items-center gap-2 font-bold text-gray-700">
-              <Bone className="h-5 w-5" /> Dostumuzun Bilgileri
-            </h4>
-            <div className="grid grid-cols-2 gap-y-3 text-sm">
-              <div><span className="text-gray-500">Tur:</span> <span className="font-semibold text-gray-800">{post.pet?.species}</span></div>
-              <div><span className="text-gray-500">Irk:</span> <span className="font-semibold text-gray-800">{post.pet?.breed || '-'}</span></div>
-              <div><span className="text-gray-500">Cinsiyet:</span> <span className="font-semibold text-gray-800">{post.pet?.gender}</span></div>
-              <div><span className="text-gray-500">Boyut:</span> <span className="font-semibold text-gray-800">{post.pet?.size || '-'}</span></div>
-            </div>
-          </div>
-
+          {/* Description */}
           <div>
-            <h4 className="mb-2 flex items-center gap-2 font-bold text-gray-700">
-              <Info className="h-5 w-5" /> Aciklama
+            <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Info className="h-3.5 w-3.5 text-gray-400" /> Açıklama
             </h4>
-            <p className="rounded-2xl bg-gray-50 p-4 text-sm leading-relaxed text-gray-600">{post.description}</p>
+            <p className="text-sm leading-relaxed text-gray-600">{post.description}</p>
           </div>
 
-          <div className="border-t pt-6">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-lg font-bold text-orange-600">
-                <User className="h-5 w-5" />
+          {/* Health Summary */}
+          {post.pet?.healthSummary && (
+            <div className="rounded-xl bg-emerald-50 p-3.5 ring-1 ring-emerald-100">
+              <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                <Shield className="h-3.5 w-3.5" /> Sağlık Durumu
+              </h4>
+              <p className="text-sm text-emerald-700">{post.pet.healthSummary}</p>
+            </div>
+          )}
+
+          {/* Owner Card */}
+          <div className="rounded-xl bg-gray-50 p-4 ring-1 ring-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white text-sm font-bold">
+                {post.owner?.fullName?.charAt(0) || <User className="h-5 w-5" />}
               </div>
               <div>
-                <p className="text-xs text-gray-500">Ilan Sahibi</p>
-                <p className="font-bold text-gray-800">{post.owner?.fullName || 'Bilinmiyor'}</p>
+                <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400">İlan Sahibi</p>
+                <p className="text-sm font-bold text-gray-800">{post.owner?.fullName || 'Bilinmiyor'}</p>
               </div>
             </div>
+          </div>
 
-            {actionError && (
-              <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                {actionError}
-              </div>
-            )}
+          {actionError && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {actionError}
+            </div>
+          )}
 
-            {isOwner ? (
+          {isOwner ? (
               <div className="space-y-4">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <button
                     onClick={() => handlePostStatusUpdate('ADOPTED')}
                     disabled={updatingPostStatus || post.status !== 'ACTIVE'}
-                    className="rounded-2xl bg-emerald-600 px-4 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+                    className="rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:from-emerald-600 hover:to-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 shadow-sm"
                   >
                     <span className="inline-flex items-center gap-2">
-                      <CheckCircle2 className="h-5 w-5" /> Sahiplendirildi
+                      <CheckCircle2 className="h-4 w-4" /> Sahiplendirildi
                     </span>
                   </button>
                   <button
                     onClick={() => handlePostStatusUpdate('CLOSED')}
                     disabled={updatingPostStatus || post.status !== 'ACTIVE'}
-                    className="rounded-2xl bg-gray-800 px-4 py-3 font-semibold text-white transition hover:bg-gray-900 disabled:cursor-not-allowed disabled:bg-gray-400"
+                    className="rounded-xl bg-gray-800 px-4 py-3 text-sm font-bold text-white transition hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-50 shadow-sm"
                   >
                     <span className="inline-flex items-center gap-2">
-                      <XCircle className="h-5 w-5" /> Ilani Kapat
+                      <XCircle className="h-4 w-4" /> İlanı Kapat
                     </span>
                   </button>
                 </div>
 
-                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                <div className="rounded-xl bg-gray-50 p-4 ring-1 ring-gray-100">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <h3 className="text-lg font-bold text-gray-900">Gelen Basvurular</h3>
-                      <p className="mt-1 text-sm text-gray-500">Bu ilana gelen tum sahiplenme taleplerini burada yonetebilirsiniz.</p>
+                      <h3 className="text-sm font-bold text-gray-900">Gelen Başvurular</h3>
+                      <p className="mt-0.5 text-xs text-gray-400">Bu ilana gelen tüm sahiplenme taleplerini yönetin.</p>
                     </div>
-                    <div className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm">
-                      {ownerRequests.length} basvuru
+                    <div className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-gray-700 ring-1 ring-gray-200">
+                      {ownerRequests.length} başvuru
                     </div>
                   </div>
                 </div>
@@ -582,44 +632,35 @@ export default function PostDetails() {
                 )}
 
                 <button
-                  onClick={() => {
-                    if (!currentUser) {
-                      router.push('/login');
-                      return;
-                    }
-
-                    setShowChat((previous) => !previous);
+                  disabled={loadingChat}
+                  onClick={async () => {
+                    if (!currentUser) { router.push('/login'); return; }
+                    if (showChat) { setShowChat(false); return; }
+                    setLoadingChat(true);
+                    try {
+                      const res = await api.post('/conversations', { targetUserId: post.ownerUserId, postId: post.id });
+                      setActiveConversationId(res.data.id);
+                      setShowChat(true);
+                    } catch (err) {
+                      const message = err.response?.data?.message;
+                      setActionError(Array.isArray(message) ? message.join(', ') : message || 'Sohbet başlatılamadı.');
+                    } finally { setLoadingChat(false); }
                   }}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-600 py-4 font-bold text-white shadow-lg shadow-orange-600/20 transition hover:bg-orange-700"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 py-3 text-sm font-bold text-white shadow-sm shadow-orange-200/40 transition hover:from-orange-600 hover:to-orange-700 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  <MessageSquare className="h-5 w-5" /> {showChat ? 'Sohbeti Gizle' : 'Sahibi ile Iletisime Gec'}
+                  <MessageSquare className="h-4 w-4" /> 
+                  {loadingChat ? 'Bağlanıyor...' : showChat ? 'Sohbeti Gizle' : 'Sahibi ile İletişime Geç'}
                 </button>
 
-                {showChat && currentUser && (
-                  <div className="mt-4 border-t pt-4">
-                    <Chat conversationId={`conv-${postId}`} currentUserId={currentUser.id} />
+                {showChat && activeConversationId && currentUser && (
+                  <div className="mt-4">
+                    <Chat conversationId={activeConversationId} currentUserId={currentUser.id} />
                   </div>
                 )}
               </div>
             )}
-
-            <div className="mt-6 grid gap-3 md:grid-cols-2">
-              <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-800">
-                  <Home className="h-4 w-4 text-orange-500" /> Konum
-                </div>
-                <div className="text-sm text-gray-500">{post.city}</div>
-              </div>
-              <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-800">
-                  <Phone className="h-4 w-4 text-orange-500" /> Iletisim
-                </div>
-                <div className="text-sm text-gray-500">{post.owner?.phone || 'Telefon paylasilmamis'}</div>
-              </div>
-            </div>
           </div>
         </div>
-      </div>
 
       <ReportModal postId={postId} isOpen={isReportOpen} onClose={() => setIsReportOpen(false)} />
     </div>

@@ -42,6 +42,12 @@ export class PetPostsController {
     return this.petPostsService.create(userId, createPetPostDto, imageUrls);
   }
 
+  @Get('my')
+  @UseGuards(JwtAuthGuard)
+  async findMyPosts(@Req() req: any) {
+    return this.petPostsService.findMyPosts(req.user.id);
+  }
+
   @Get()
   async findAll(@Query() filters: any) {
     return this.petPostsService.findAllActive(filters);

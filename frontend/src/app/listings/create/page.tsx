@@ -27,17 +27,14 @@ import api from "@/api";
 
 const listingSchema = z.object({
   species: z.enum(["Dog", "Cat", "Bird", "Other"], {
-    required_error: "Lütfen bir tür seçin.",
-    invalid_type_error: "Lütfen bir tür seçin.",
+    message: "Lütfen bir tür seçin.",
   }),
   breed: z.string().optional(),
   age: z.enum(["Baby", "Young", "Adult", "Senior"], {
-    required_error: "Lütfen yaş durumunu seçin.",
-    invalid_type_error: "Lütfen yaş durumunu seçin.",
+    message: "Lütfen yaş durumunu seçin.",
   }),
   gender: z.enum(["Male", "Female", "Unknown"], {
-    required_error: "Lütfen cinsiyet seçin.",
-    invalid_type_error: "Lütfen cinsiyet seçin.",
+    message: "Lütfen cinsiyet seçin.",
   }),
   isNeutered: z.boolean(),
   isVaccinated: z.boolean(),

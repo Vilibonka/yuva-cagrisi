@@ -9,6 +9,7 @@ import { PostStatus, Prisma, RequestStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAdoptionRequestDto } from './dto/create-adoption-request.dto';
 import { UpdateAdoptionRequestStatusDto } from './dto/update-adoption-request-status.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const adoptionRequestInclude = {
   applicant: {
@@ -54,12 +55,15 @@ const adoptionRequestInclude = {
 
 @Injectable()
 export class AdoptionRequestsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async create(applicantUserId: string, createDto: CreateAdoptionRequestDto) {
     const post = await this.prisma.petPost.findUnique({
       where: { id: createDto.postId },
-      select: { id: true, ownerUserId: true, status: true },
+      select: { id: true, ownerUserId: true, status: true, title: true },
     });
 
     if (!post) {
@@ -88,7 +92,7 @@ export class AdoptionRequestsService {
       throw new ConflictException('You already applied to this post');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const request = await tx.adoptionRequest.create({
         data: {
           postId: createDto.postId,
@@ -118,6 +122,16 @@ export class AdoptionRequestsService {
         include: adoptionRequestInclude,
       });
     });
+
+    // Send real-time notification to the post owner
+    await this.notificationsService.createNewRequestNotification(
+      post.ownerUserId,
+      result.id,
+      result.applicant.fullName,
+      post.title,
+    );
+
+    return result;
   }
 
   async getMyRequests(applicantUserId: string, postId?: string) {
@@ -179,9 +193,29 @@ export class AdoptionRequestsService {
       throw new BadRequestException('This post is no longer accepting requests');
     }
 
-    return updateDto.status === RequestStatus.APPROVED
+    const result = await (updateDto.status === RequestStatus.APPROVED
       ? this.approveRequest(ownerUserId, requestId, request.post.id, updateDto.note)
-      : this.rejectRequest(ownerUserId, requestId, updateDto.note);
+      : this.rejectRequest(ownerUserId, requestId, updateDto.note));
+
+    // Emit real-time notification for the primary request
+    await this.notificationsService.createStatusChangeNotification(
+      result.primaryRequest.applicantUserId,
+      result.primaryRequest.id,
+      result.primaryRequest.status,
+    );
+
+    // Emit notifications for auto-rejected requests if any
+    if (result.autoRejectedRequests && result.autoRejectedRequests.length > 0) {
+      for (const req of result.autoRejectedRequests) {
+        await this.notificationsService.createStatusChangeNotification(
+          req.applicantUserId,
+          req.id,
+          req.status,
+        );
+      }
+    }
+
+    return result.primaryRequest;
   }
 
   private async approveRequest(ownerUserId: string, requestId: string, postId: string, note?: string) {
@@ -247,10 +281,16 @@ export class AdoptionRequestsService {
         },
       });
 
-      return tx.adoptionRequest.findUniqueOrThrow({
+      const primaryRequest = await tx.adoptionRequest.findUniqueOrThrow({
         where: { id: requestId },
         include: adoptionRequestInclude,
       });
+
+      const rejectedDetails = await tx.adoptionRequest.findMany({
+        where: { id: { in: otherPendingRequests.map(r => r.id) } },
+      });
+
+      return { primaryRequest, autoRejectedRequests: rejectedDetails };
     });
   }
 
@@ -276,10 +316,12 @@ export class AdoptionRequestsService {
         },
       });
 
-      return tx.adoptionRequest.findUniqueOrThrow({
+      const primaryRequest = await tx.adoptionRequest.findUniqueOrThrow({
         where: { id: requestId },
         include: adoptionRequestInclude,
       });
+
+      return { primaryRequest, autoRejectedRequests: [] };
     });
   }
 

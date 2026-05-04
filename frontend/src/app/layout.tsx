@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import Navbar from '../components/Navbar';
+import { Toaster } from 'react-hot-toast';
 
 export const metadata: Metadata = {
   title: 'Bir Yuva Bir Dost',
@@ -17,6 +18,7 @@ export default function RootLayout({
     <html lang="tr">
       <body className="flex min-h-screen flex-col bg-gray-50 font-sans text-gray-800 antialiased">
         <AuthProvider>
+          <Toaster position="top-right" />
           <Navbar />
           <main className="flex w-full flex-1 p-4 sm:p-8">{children}</main>
           <footer className="w-full border-t border-gray-200 bg-white py-8 text-center text-sm text-gray-500 shadow-inner">

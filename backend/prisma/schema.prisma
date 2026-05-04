@@ -222,6 +222,7 @@ model AdoptionRequest {
   applicant          User                   @relation("RequestApplicant", fields: [applicantUserId], references: [id], onDelete: Cascade)
   statusHistory      RequestStatusHistory[]
   conversations      Conversation[]
+  notifications      Notification[]
 
   @@unique([postId, applicantUserId])
   @@index([postId])
@@ -288,11 +289,14 @@ model Notification {
   message   String
   isRead    Boolean          @default(false)
   createdAt DateTime         @default(now())
+  requestId String?
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  request   AdoptionRequest? @relation(fields: [requestId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([type])
   @@index([isRead])
+  @@index([requestId])
 }
 
 model Conversation {

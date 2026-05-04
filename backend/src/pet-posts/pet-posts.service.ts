@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreatePetPostDto } from './dto/create-pet-post.dto';
-import { PostStatus, Prisma } from '@prisma/client';
+import { PostStatus, Prisma, RequestStatus } from '@prisma/client';
 
 @Injectable()
 export class PetPostsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService
+  ) {}
 
   async create(userId: string, createPetPostDto: CreatePetPostDto, imageUrls: { url: string, isPrimary: boolean }[]) {
     // We create both Pet and PetPost in a transaction
@@ -46,6 +50,20 @@ export class PetPostsService {
       });
 
       return post;
+    });
+  }
+
+  async findMyPosts(userId: string) {
+    return this.prisma.petPost.findMany({
+      where: { ownerUserId: userId },
+      include: {
+        pet: true,
+        images: true,
+        adoptionRequests: {
+          select: { id: true, status: true, applicantUserId: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
     });
   }
 
@@ -112,10 +130,47 @@ export class PetPostsService {
       throw new ForbiddenException('You do not have permission to update this post');
     }
 
-    return this.prisma.petPost.update({
+    const updatedPost = await this.prisma.petPost.update({
       where: { id: postId },
       data: { status, closedAt: (status === PostStatus.CLOSED || status === PostStatus.ADOPTED) ? new Date() : null },
       include: { pet: true, images: true }
     });
+
+    // If post is closed or adopted, automatically reject any pending applications
+    if (status === PostStatus.CLOSED || status === PostStatus.ADOPTED) {
+      const pendingRequests = await this.prisma.adoptionRequest.findMany({
+        where: { postId, status: RequestStatus.PENDING }
+      });
+
+      if (pendingRequests.length > 0) {
+        await this.prisma.$transaction(async (tx) => {
+          await tx.adoptionRequest.updateMany({
+            where: { id: { in: pendingRequests.map(r => r.id) } },
+            data: { status: RequestStatus.REJECTED, reviewedAt: new Date() }
+          });
+
+          await tx.requestStatusHistory.createMany({
+            data: pendingRequests.map(r => ({
+              requestId: r.id,
+              oldStatus: RequestStatus.PENDING,
+              newStatus: RequestStatus.REJECTED,
+              changedByUserId: userId,
+              note: status === PostStatus.ADOPTED ? 'İlan sahiplendirildiği için başvurunuz otomatik olarak reddedildi.' : 'İlan kapatıldığı için başvurunuz otomatik olarak reddedildi.'
+            }))
+          });
+        });
+
+        // Send notifications
+        for (const req of pendingRequests) {
+          await this.notificationsService.createStatusChangeNotification(
+            req.applicantUserId,
+            req.id,
+            RequestStatus.REJECTED
+          );
+        }
+      }
+    }
+
+    return updatedPost;
   }
 }
