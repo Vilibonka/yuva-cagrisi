@@ -4,12 +4,12 @@ import { useRouter } from 'next/navigation';
 import { getStoredUser } from '@/lib/auth';
 import api from '@/api';
 import Chat from '@/components/Chat';
-import { MessageSquare, Clock, ChevronRight, Search, Loader2, Inbox } from 'lucide-react';
+import { MessageSquare, ChevronRight, Search, Loader2, Inbox } from 'lucide-react';
 
 interface ConversationUser {
   id: string;
   fullName: string;
-  profileImageUrl?: string;
+  profileImageUrl?: string | null;
 }
 
 interface Participant {

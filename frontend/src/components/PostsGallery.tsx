@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Bone, Filter, Image as ImageIcon, MapPin, PawPrint, Search, SlidersHorizontal, X, Heart, Clock } from 'lucide-react';
-import api from '@/api';
+import { Bone, Image as ImageIcon, MapPin, PawPrint, Search, SlidersHorizontal, X, Clock } from 'lucide-react';
+import api, { buildMediaUrl } from '@/api';
 import FavoriteButton from './FavoriteButton';
 
 interface Post {
@@ -262,7 +262,7 @@ export default function PostsGallery() {
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {posts.map((post) => {
             const primaryImage = post.images?.find((img) => img.isPrimary) || post.images?.[0];
-            const imageUrl = primaryImage ? `http://localhost:3001${primaryImage.imageUrl}` : null;
+            const imageUrl = buildMediaUrl(primaryImage?.imageUrl);
             const species = post.pet?.species || 'OTHER';
             const typeInfo = postTypeLabels[post.postType] || postTypeLabels.FOUND_STRAY;
 

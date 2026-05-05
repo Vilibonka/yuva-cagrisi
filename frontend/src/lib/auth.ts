@@ -21,17 +21,29 @@ export function getStoredUser() {
   const rawUser = window.localStorage.getItem(AUTH_USER_KEY);
   if (!rawUser) return null;
   try {
-    return JSON.parse(rawUser);
+    return JSON.parse(rawUser) as AuthUser;
   } catch {
     window.localStorage.removeItem(AUTH_USER_KEY);
     return null;
   }
 }
 
+export interface AuthUser {
+  id: string;
+  fullName: string;
+  email: string;
+  contactPhone?: string | null;
+  city?: string | null;
+  district?: string | null;
+  biography?: string | null;
+  role?: string;
+  profileImageUrl?: string | null;
+}
+
 export interface AuthSession {
   accessToken: string;
   refreshToken: string;
-  user: any;
+  user: AuthUser;
 }
 
 export function storeAuthSession({ accessToken, refreshToken, user }: AuthSession) {

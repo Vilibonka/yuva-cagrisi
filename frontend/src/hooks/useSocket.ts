@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { API_BASE_URL } from '@/api';
+import { getStoredAccessToken } from '@/lib/auth';
 
 interface UseSocketProps {
   userId?: string | null;
@@ -12,10 +14,11 @@ export function useSocket({ userId }: UseSocketProps) {
   useEffect(() => {
     if (!userId) return;
 
-    // Connect to NestJS WebSocket gateway (make sure port matches your backend URL)
-    // You might want to use environment variables for this in production: process.env.NEXT_PUBLIC_API_URL
-    const socketInstance = io('http://localhost:3001', {
-      query: { userId },
+    const token = getStoredAccessToken();
+    if (!token) return;
+
+    const socketInstance = io(API_BASE_URL, {
+      auth: { token },
       transports: ['websocket'],
     });
 

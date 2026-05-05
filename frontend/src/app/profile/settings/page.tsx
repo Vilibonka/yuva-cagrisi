@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/api';
+import { getApiErrorMessage } from '@/lib/errors';
 
 export default function SettingsPage() {
   const { user, updateUser } = useAuth();
@@ -41,8 +42,8 @@ export default function SettingsPage() {
       const { data } = await api.patch('/users/me', formData);
       updateUser(data);
       setSuccess(true);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Profil güncellenemedi.');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Profil güncellenemedi.'));
     } finally {
       setLoading(false);
     }

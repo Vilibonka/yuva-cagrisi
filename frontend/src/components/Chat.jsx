@@ -1,7 +1,8 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Trash2, ShieldAlert, Loader2 } from 'lucide-react';
-import api from '@/api';
+import api, { API_BASE_URL } from '@/api';
+import { getStoredAccessToken } from '@/lib/auth';
 import { io } from 'socket.io-client';
 
 export default function Chat({ conversationId, currentUserId }) {
@@ -35,7 +36,14 @@ export default function Chat({ conversationId, currentUserId }) {
     };
     fetchMessages();
 
-    const newSocket = io('http://localhost:3001', {
+    const token = getStoredAccessToken();
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    const newSocket = io(API_BASE_URL, {
+      auth: { token },
       transports: ['websocket'],
     });
     setSocket(newSocket);
@@ -61,7 +69,6 @@ export default function Chat({ conversationId, currentUserId }) {
     if (!inputValue.trim() || !socket) return;
     
     socket.emit('sendMessage', {
-      senderUserId: currentUserId,
       conversationId,
       content: inputValue
     });

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Heart } from 'lucide-react';
 import api from '@/api';
 import { useAuth } from '@/context/AuthContext';
@@ -9,6 +9,10 @@ import { useRouter } from 'next/navigation';
 interface FavoriteButtonProps {
   postId: string;
   initialIsFavorited?: boolean;
+}
+
+interface SavedPostSummary {
+  postId: string;
 }
 
 export default function FavoriteButton({ postId, initialIsFavorited = false }: FavoriteButtonProps) {
@@ -25,7 +29,7 @@ export default function FavoriteButton({ postId, initialIsFavorited = false }: F
     const checkFavoriteStatus = async () => {
       try {
         const { data } = await api.get('/users/me/saved-posts');
-        const isSaved = data.some((fav: any) => fav.postId === postId);
+        const isSaved = data.some((fav: SavedPostSummary) => fav.postId === postId);
         setIsFavorited(isSaved);
       } catch {
         // Silently fail - just show as not favorited

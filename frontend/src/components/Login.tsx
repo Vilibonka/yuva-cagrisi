@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/api';
+import { getApiErrorMessage } from '@/lib/errors';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -26,9 +27,8 @@ const Login = () => {
         accessToken: data.accessToken,
         refreshToken: data.refreshToken,
       });
-    } catch (err: any) {
-      const errorMsg = err.response?.data?.message;
-      setError(Array.isArray(errorMsg) ? errorMsg[0] : (errorMsg || 'Giriş yapılamadı. Bilgilerinizi kontrol edin.'));
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Giriş yapılamadı. Bilgilerinizi kontrol edin.'));
     } finally {
       setLoading(false);
     }

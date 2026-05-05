@@ -1,23 +1,23 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getStoredUser, getStoredAccessToken, storeAuthSession, clearAuthSession, AuthSession } from '@/lib/auth';
+import { getStoredUser, getStoredAccessToken, storeAuthSession, clearAuthSession, AuthSession, AuthUser } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
-  user: any | null;
+  user: AuthUser | null;
   accessToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (session: AuthSession) => void;
   logout: () => void;
-  updateUser: (user: any) => void;
+  updateUser: (user: AuthUser) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
-  const updateUser = (updatedUser: any) => {
+  const updateUser = (updatedUser: AuthUser) => {
     setUser(updatedUser);
     const refreshToken = localStorage.getItem('refreshToken') || '';
     storeAuthSession({ 

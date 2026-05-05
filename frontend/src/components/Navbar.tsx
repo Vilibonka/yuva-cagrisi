@@ -4,10 +4,19 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { User, LogOut, Heart, Settings, PlusSquare, LayoutDashboard, Bell, MessageSquare, X, CheckCheck, Clock, Info } from 'lucide-react';
+import { User, LogOut, Heart, Settings, PlusSquare, LayoutDashboard, Bell, MessageSquare, X, Clock, Info } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
 import toast from 'react-hot-toast';
 import api from '@/api';
+
+interface NotificationItem {
+  id?: string;
+  type: string;
+  title?: string;
+  message?: string;
+  isRead?: boolean;
+  createdAt?: string;
+}
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -15,7 +24,7 @@ export default function Navbar() {
   const { socket } = useSocket({ userId: user?.id });
   const [unreadNotifications, setUnreadNotifications] = React.useState(0);
   const [unreadMessages, setUnreadMessages] = React.useState(0);
-  const [notifications, setNotifications] = React.useState<any[]>([]);
+  const [notifications, setNotifications] = React.useState<NotificationItem[]>([]);
   const [showNotifPanel, setShowNotifPanel] = React.useState(false);
   const [notifLoading, setNotifLoading] = React.useState(false);
   const notifRef = React.useRef<HTMLDivElement>(null);
@@ -55,7 +64,7 @@ export default function Navbar() {
   React.useEffect(() => {
     if (!socket) return;
 
-    const handleNotification = (notification: any) => {
+    const handleNotification = (notification: NotificationItem) => {
       if (notification.type === 'NEW_MESSAGE') {
         // Only increase message badge, not notification badge
         setUnreadMessages((prev) => prev + 1);
@@ -63,7 +72,7 @@ export default function Navbar() {
       } else {
         setUnreadNotifications((prev) => prev + 1);
         setNotifications((prev) => [notification, ...prev]);
-        toast(notification.message, { icon: '🔔', duration: 5000 });
+        toast(notification.message || 'Yeni bir bildiriminiz var.', { icon: '🔔', duration: 5000 });
       }
     };
 
@@ -231,9 +240,9 @@ export default function Navbar() {
                           <p className="text-xs mt-1 text-gray-300">Yeni bildirimler burada görünecek.</p>
                         </div>
                       ) : (
-                        notifications.map((notif) => (
+                        notifications.map((notif, index) => (
                           <div
-                            key={notif.id}
+                            key={notif.id || `${notif.type}-${index}`}
                             className={`px-5 py-3.5 hover:bg-orange-50/40 transition-colors cursor-default ${
                               !notif.isRead ? 'bg-orange-50/60' : ''
                             }`}
@@ -247,7 +256,7 @@ export default function Navbar() {
                                 <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{notif.message}</p>
                                 <p className="text-[10px] text-gray-400 mt-1.5 flex items-center gap-1">
                                   <Clock className="w-3 h-3" />
-                                  {formatTimeAgo(notif.createdAt)}
+                                  {notif.createdAt ? formatTimeAgo(notif.createdAt) : 'Az önce'}
                                 </p>
                               </div>
                               {!notif.isRead && (

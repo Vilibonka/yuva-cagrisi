@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import api from '@/api';
+import api, { buildMediaUrl } from '@/api';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
-import { Heart, MapPin, Image as ImageIcon, Trash2, PawPrint, Clock } from 'lucide-react';
+import { Heart, MapPin, Image as ImageIcon } from 'lucide-react';
 
 const speciesLabels: Record<string, string> = {
   DOG: 'Köpek',
@@ -22,9 +22,29 @@ const speciesEmojis: Record<string, string> = {
   OTHER: '🐾',
 };
 
+interface FavoriteImage {
+  imageUrl: string;
+  isPrimary?: boolean;
+}
+
+interface FavoritePost {
+  id: string;
+  title: string;
+  city?: string;
+  pet?: { species?: string };
+  images?: FavoriteImage[];
+}
+
+interface FavoriteItem {
+  id: string;
+  postId: string;
+  createdAt: string;
+  post: FavoritePost;
+}
+
 export default function FavoritesPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const [favorites, setFavorites] = useState<any[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [removing, setRemoving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +54,7 @@ export default function FavoritesPage() {
       try {
         const { data } = await api.get('/users/me/saved-posts');
         setFavorites(data);
-      } catch (err: any) {
+      } catch {
         setError('Favoriler yüklenirken bir hata oluştu.');
       } finally {
         setLoading(false);
@@ -145,8 +165,8 @@ export default function FavoritesPage() {
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {favorites.map((fav) => {
             const post = fav.post;
-            const primaryImage = post.images?.find((img: any) => img.isPrimary) || post.images?.[0];
-            const imageUrl = primaryImage ? `http://localhost:3001${primaryImage.imageUrl}` : null;
+            const primaryImage = post.images?.find((img) => img.isPrimary) || post.images?.[0];
+            const imageUrl = buildMediaUrl(primaryImage?.imageUrl);
             const species = post.pet?.species || 'OTHER';
 
             return (

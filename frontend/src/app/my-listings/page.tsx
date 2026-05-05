@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, MapPin, Eye, PawPrint, PlusSquare, Clock3, Users, XCircle, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
-import api from '@/api';
+import api, { buildMediaUrl } from '@/api';
 import { getStoredUser } from '@/lib/auth';
 
 interface PostImage {
@@ -82,7 +82,7 @@ export default function MyListingsPage() {
       try {
         const response = await api.get('/pet-posts/my');
         setPosts(response.data);
-      } catch (err) {
+      } catch {
         setError('İlanlarınız yüklenemedi.');
       } finally {
         setLoading(false);
@@ -188,7 +188,7 @@ export default function MyListingsPage() {
         <div className="grid gap-4 md:grid-cols-2">
           {filteredPosts.map((post) => {
             const primaryImage = getPrimaryImage(post);
-            const imageUrl = primaryImage ? `http://localhost:3001${primaryImage.imageUrl}` : null;
+            const imageUrl = buildMediaUrl(primaryImage?.imageUrl);
             const config = statusConfig[post.status] || statusConfig.DRAFT;
             const StatusIcon = config.icon;
             const pendingRequests = post.adoptionRequests?.filter(r => r.status === 'PENDING').length || 0;

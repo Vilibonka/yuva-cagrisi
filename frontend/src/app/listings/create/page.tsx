@@ -11,19 +11,15 @@ import {
   PawPrint,
   AlertCircle,
   MapPin,
-  FileText,
   Camera,
-  Heart,
   Stethoscope,
   Send,
   Syringe,
   Scissors,
-  Dog,
-  Cat,
-  Bird,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import api from "@/api";
+import { getApiErrorMessage } from "@/lib/errors";
 
 const listingSchema = z.object({
   species: z.enum(["Dog", "Cat", "Bird", "Other"], {
@@ -137,13 +133,8 @@ export default function CreateListingPage() {
       reset();
       setImages([]);
       setTimeout(() => router.push("/posts"), 1500);
-    } catch (error: any) {
-      const msg = error?.response?.data?.message;
-      toast.error(
-        Array.isArray(msg)
-          ? msg.join(", ")
-          : msg || "İlan oluşturulurken bir hata oluştu."
-      );
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, "İlan oluşturulurken bir hata oluştu."));
     } finally {
       setIsLoading(false);
     }

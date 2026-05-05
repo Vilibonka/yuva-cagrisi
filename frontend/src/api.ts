@@ -1,8 +1,16 @@
 import axios from 'axios';
 import { getStoredAccessToken, getStoredRefreshToken, getStoredUser, storeAuthSession, clearAuthSession } from '@/lib/auth';
 
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
+export function buildMediaUrl(path?: string | null) {
+  if (!path) return null;
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  return `${API_BASE_URL}${path}`;
+}
+
 const api = axios.create({
-  baseURL: 'http://localhost:3001',
+  baseURL: API_BASE_URL,
 });
 
 api.interceptors.request.use((config) => {
@@ -29,7 +37,7 @@ api.interceptors.response.use(
 
       if (refreshToken && user) {
         try {
-          const { data } = await axios.post('http://localhost:3001/auth/refresh', {
+          const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
             userId: user.id,
             refreshToken,
           });

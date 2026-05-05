@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Clock3, MapPin, PawPrint, Home, Users, Heart, Phone, FileText, ChevronDown, ChevronUp, Loader2, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
-import api from '@/api';
+import api, { buildMediaUrl } from '@/api';
 import { getStoredUser } from '@/lib/auth';
 
 function formatDate(value) {
@@ -144,7 +144,7 @@ export default function MyRequests() {
         <div className="space-y-4">
           {filteredRequests.map((request) => {
             const primaryImage = getPrimaryImage(request.post);
-            const imageUrl = primaryImage ? `http://localhost:3001${primaryImage.imageUrl}` : null;
+            const imageUrl = buildMediaUrl(primaryImage?.imageUrl);
             const config = statusConfig[request.status] || statusConfig.CANCELLED;
             const StatusIcon = config.icon;
             const isExpanded = expandedId === request.id;

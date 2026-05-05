@@ -2,11 +2,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  AlertTriangle, ArrowLeft, Bone, CheckCircle2, Home, Info, MapPin,
-  MessageSquare, Phone, User, XCircle, Clock3, Heart, PawPrint, Shield,
-  ChevronLeft, Loader2, Users, Calendar,
+  AlertTriangle, Bone, CheckCircle2, Info, MapPin,
+  MessageSquare, Phone, User, XCircle, Clock3, PawPrint, Shield,
+  ChevronLeft, Loader2, Calendar,
 } from 'lucide-react';
-import api from '@/api';
+import api, { buildMediaUrl } from '@/api';
 import RequestStatusBadge from '@/components/RequestStatusBadge';
 import RequestStatusTimeline from '@/components/RequestStatusTimeline';
 import { getStoredUser } from '@/lib/auth';
@@ -282,7 +282,7 @@ export default function PostDetails() {
   }
 
   const primaryImage = getPrimaryImage(post);
-  const imageUrl = primaryImage ? `http://localhost:3001${primaryImage.imageUrl}` : null;
+  const imageUrl = buildMediaUrl(primaryImage?.imageUrl);
   const isOwner = Boolean(currentUser && currentUser.id === post.ownerUserId);
 
   return (
