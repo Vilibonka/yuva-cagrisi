@@ -94,6 +94,20 @@ export class MessagesService {
     });
   }
 
+  async isConversationParticipant(userId: string, conversationId: string) {
+    const participant = await this.prisma.conversationParticipant.findUnique({
+      where: {
+        conversationId_userId: {
+          conversationId,
+          userId,
+        },
+      },
+      select: { id: true },
+    });
+
+    return !!participant;
+  }
+
   async getUserConversations(userId: string) {
     return this.prisma.conversation.findMany({
       where: {
