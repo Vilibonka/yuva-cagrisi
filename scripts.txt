@@ -10,6 +10,17 @@ Frontend:
 cd C:\Users\Enes\Documents\GitHub\yuva-cagrisi\frontend
 npm run dev
 
+Bir Yuva Bir Dost Mobile:
+cd C:\Users\Enes\Documents\GitHub\yuva-cagrisi\mobile
+npm run android
+
+Mobile fiziksel Android icin:
+mobile klasorunde .env olustur
+EXPO_PUBLIC_API_URL=http://<PC-LAN-IP>:3000
+
+Mobile Android emulator icin:
+EXPO_PUBLIC_API_URL=http://10.0.2.2:3000
+
 prisma: 
 cd C:\Users\Enes\Documents\GitHub\yuva-cagrisi\backend
 npx prisma studio

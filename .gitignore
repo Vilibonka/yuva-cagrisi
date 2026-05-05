@@ -1,0 +1,8 @@
+.run-logs/
+
+frontend/dist
+
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/.env*
