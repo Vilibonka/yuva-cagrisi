@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, type Href, useLocalSearchParams } from 'expo-router';
 import { z } from 'zod';
 
 import { Button, Field, Section, colors } from '@/components/Design';
@@ -56,7 +56,7 @@ export default function RegisterScreen() {
         city: emptyToUndefined(values.city),
         district: emptyToUndefined(values.district),
       });
-      router.replace(getRedirectTarget(redirectTo));
+      router.replace(getRedirectTarget(redirectTo) as Href);
     } catch (error) {
       Alert.alert('Kayıt başarısız', getApiErrorMessage(error, 'Lütfen bilgileri kontrol et.'));
     }
