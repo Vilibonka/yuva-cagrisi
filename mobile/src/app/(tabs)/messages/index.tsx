@@ -17,7 +17,7 @@ export default function MessagesScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.replace('/login');
+    if (!isLoading && !isAuthenticated) router.replace({ pathname: '/login', params: { redirectTo: '/messages' } });
   }, [isAuthenticated, isLoading]);
 
   const load = useCallback(async () => {

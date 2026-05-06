@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Heart, LogOut, MessageSquare, Plus, Send, User } from 'lucide-react-native';
+import { Bell, Heart, ListChecks, LogOut, MessageSquare, Plus, Send, Settings, User } from 'lucide-react-native';
 
 import { Button, LoadingState, Section, colors } from '@/components/Design';
 import { useAuth } from '@/context/AuthContext';
@@ -11,7 +11,7 @@ export default function ProfileScreen() {
 
   if (isLoading) return <LoadingState label="Profil açılıyor..." />;
   if (!isAuthenticated) {
-    router.replace('/login');
+    router.replace({ pathname: '/login', params: { redirectTo: '/profile' } });
     return <LoadingState label="Girişe yönlendiriliyor..." />;
   }
 
@@ -33,9 +33,12 @@ export default function ProfileScreen() {
 
       <Section title="Hızlı Erişim">
         <Button title="İlan Ver" icon={<Plus color="#fff" size={18} />} onPress={() => router.push('/create')} />
+        <Button title="İlanlarım" variant="secondary" icon={<ListChecks color={colors.primaryDark} size={18} />} onPress={() => router.push('/my-listings')} />
         <Button title="Mesajlarım" variant="secondary" icon={<MessageSquare color={colors.primaryDark} size={18} />} onPress={() => router.push('/messages')} />
         <Button title="Favorilerim" variant="secondary" icon={<Heart color={colors.primaryDark} size={18} />} onPress={() => router.push('/favorites')} />
         <Button title="Başvurularım" variant="secondary" icon={<Send color={colors.primaryDark} size={18} />} onPress={() => router.push('/requests')} />
+        <Button title="Bildirimler" variant="secondary" icon={<Bell color={colors.primaryDark} size={18} />} onPress={() => router.push('/notifications')} />
+        <Button title="Profil Ayarları" variant="secondary" icon={<Settings color={colors.primaryDark} size={18} />} onPress={() => router.push('/profile-settings')} />
       </Section>
 
       <Button title="Çıkış Yap" variant="danger" icon={<LogOut color="#fff" size={18} />} onPress={signOut} />

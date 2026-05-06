@@ -2,12 +2,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { z } from 'zod';
 
 import { Button, Field, Section, colors } from '@/components/Design';
 import { useAuth } from '@/context/AuthContext';
 import { getApiErrorMessage } from '@/lib/errors';
+import { getRedirectTarget } from '@/lib/navigation';
 import { emailField } from '@/lib/validation';
 
 const loginSchema = z.object({
@@ -19,6 +20,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
+  const { redirectTo } = useLocalSearchParams<{ redirectTo?: string }>();
   const {
     control,
     handleSubmit,
@@ -35,7 +37,7 @@ export default function LoginScreen() {
   const submit = handleSubmit(async (values) => {
     try {
       await signIn(values.email.trim(), values.password);
-      router.replace('/');
+      router.replace(getRedirectTarget(redirectTo));
     } catch (error) {
       Alert.alert('Giriş başarısız', getApiErrorMessage(error, 'Bilgilerini kontrol edip tekrar dene.'));
     }
@@ -80,7 +82,11 @@ export default function LoginScreen() {
             )}
           />
           <Button title="Giriş Yap" loading={isSubmitting} onPress={submit} />
-          <Button title="Hesabım yok, kayıt olayım" variant="ghost" onPress={() => router.push('/register')} />
+          <Button
+            title="Hesabım yok, kayıt olayım"
+            variant="ghost"
+            onPress={() => router.push({ pathname: '/register', params: { redirectTo: getRedirectTarget(redirectTo) } })}
+          />
         </Section>
       </ScrollView>
     </KeyboardAvoidingView>

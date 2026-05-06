@@ -28,6 +28,9 @@ export default function RootLayout() {
               <Stack.Screen name="login" options={{ title: 'Giriş' }} />
               <Stack.Screen name="register" options={{ title: 'Kayıt Ol' }} />
               <Stack.Screen name="requests" options={{ title: 'Başvurularım' }} />
+              <Stack.Screen name="my-listings" options={{ title: 'İlanlarım' }} />
+              <Stack.Screen name="profile-settings" options={{ title: 'Profil Ayarları' }} />
+              <Stack.Screen name="notifications" options={{ title: 'Bildirimler' }} />
               <Stack.Screen name="post/[id]" options={{ title: 'İlan Detayı' }} />
               <Stack.Screen name="messages/[id]" options={{ title: 'Sohbet' }} />
             </Stack>

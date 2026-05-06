@@ -1,4 +1,4 @@
-import { AnimalSize, Gender, PostType, RequestStatus, Species } from '@/types';
+import { AnimalSize, Gender, NotificationType, PostStatus, PostType, ReportReason, RequestStatus, Species } from '@/types';
 
 export const speciesLabels: Record<Species, string> = {
   DOG: 'Köpek',
@@ -33,6 +33,29 @@ export const requestStatusLabels: Record<RequestStatus, string> = {
   CANCELLED: 'İptal Edildi',
 };
 
+export const postStatusLabels: Record<PostStatus, string> = {
+  DRAFT: 'Taslak',
+  ACTIVE: 'Aktif',
+  PENDING: 'Beklemede',
+  ADOPTED: 'Sahiplendirildi',
+  CLOSED: 'Kapatıldı',
+};
+
+export const reportReasonLabels: Record<ReportReason, string> = {
+  SPAM: 'Spam / Sahte İlan',
+  INAPPROPRIATE: 'Uygunsuz İçerik',
+  SCAM: 'Dolandırıcılık Şüphesi',
+  OTHER: 'Diğer',
+};
+
+export const notificationTypeLabels: Record<NotificationType, string> = {
+  REQUEST_CREATED: 'Yeni Başvuru',
+  REQUEST_APPROVED: 'Başvuru Onaylandı',
+  REQUEST_REJECTED: 'Başvuru Reddedildi',
+  NEW_MESSAGE: 'Yeni Mesaj',
+  SYSTEM: 'Bildirim',
+};
+
 export function formatDate(value?: string | null) {
   if (!value) return '-';
   return new Date(value).toLocaleDateString('tr-TR', {
@@ -48,4 +71,20 @@ export function formatTime(value?: string | null) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+export function formatTimeAgo(value?: string | null) {
+  if (!value) return 'Az önce';
+
+  const diffMs = Date.now() - new Date(value).getTime();
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (diffMs < minute) return 'Az önce';
+  if (diffMs < hour) return `${Math.floor(diffMs / minute)} dk önce`;
+  if (diffMs < day) return `${Math.floor(diffMs / hour)} sa önce`;
+  if (diffMs < 7 * day) return `${Math.floor(diffMs / day)} gün önce`;
+
+  return formatDate(value);
 }

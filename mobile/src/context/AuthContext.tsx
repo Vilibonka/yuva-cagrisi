@@ -21,6 +21,7 @@ interface AuthContextValue {
   signUp: (payload: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
   setSession: (session: AuthSession) => Promise<void>;
+  updateUser: (nextUser: User) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -71,6 +72,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setAccessToken(null);
   }, []);
 
+  const updateUser = useCallback(async (nextUser: User) => {
+    setUser(nextUser);
+    const session = await getStoredSession();
+    if (session) {
+      await storeAuthSession({ ...session, user: nextUser });
+    }
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -81,8 +90,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       signUp,
       logout,
       setSession,
+      updateUser,
     }),
-    [accessToken, isLoading, logout, setSession, signIn, signUp, user],
+    [accessToken, isLoading, logout, setSession, signIn, signUp, updateUser, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

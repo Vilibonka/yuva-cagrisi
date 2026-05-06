@@ -5,6 +5,8 @@ export type PostType = 'FOUND_STRAY' | 'REHOME_OWNED_PET' | 'TEMP_HOME_NEEDED';
 export type PostStatus = 'DRAFT' | 'ACTIVE' | 'PENDING' | 'ADOPTED' | 'CLOSED';
 export type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 export type MessageStatus = 'SENT' | 'READ' | 'DELETED';
+export type ReportReason = 'SPAM' | 'INAPPROPRIATE' | 'SCAM' | 'OTHER';
+export type NotificationType = 'REQUEST_CREATED' | 'REQUEST_APPROVED' | 'REQUEST_REJECTED' | 'NEW_MESSAGE' | 'SYSTEM';
 
 export interface User {
   id: string;
@@ -51,11 +53,14 @@ export interface PetPost {
   district?: string | null;
   status?: PostStatus;
   isUrgent?: boolean;
+  viewCount?: number | null;
   createdAt: string;
   updatedAt?: string;
+  closedAt?: string | null;
   pet?: Pet;
   images?: PostImage[];
   owner?: User;
+  adoptionRequests?: Pick<AdoptionRequest, 'id' | 'status' | 'applicantUserId'>[];
 }
 
 export interface SavedPost {
@@ -71,10 +76,26 @@ export interface AdoptionRequest {
   applicantUserId: string;
   status: RequestStatus;
   message: string;
+  housingType?: string | null;
+  hasOtherPets?: boolean | null;
+  hasChildren?: boolean | null;
+  experienceWithPets?: string | null;
+  whyAdopt?: string | null;
   contactPhone?: string | null;
   createdAt: string;
   reviewedAt?: string | null;
   post?: PetPost;
+  applicant?: User;
+  statusHistory?: RequestStatusHistory[];
+}
+
+export interface RequestStatusHistory {
+  id?: string;
+  oldStatus?: RequestStatus | null;
+  newStatus: RequestStatus;
+  note?: string | null;
+  changedAt: string;
+  changedBy?: Pick<User, 'id' | 'fullName'> | null;
 }
 
 export interface Conversation {
@@ -95,4 +116,15 @@ export interface Message {
   status: MessageStatus;
   createdAt: string;
   sender?: Pick<User, 'id' | 'fullName'>;
+}
+
+export interface NotificationItem {
+  id?: string;
+  userId?: string;
+  requestId?: string | null;
+  type: NotificationType;
+  title: string;
+  message: string;
+  isRead?: boolean;
+  createdAt?: string;
 }

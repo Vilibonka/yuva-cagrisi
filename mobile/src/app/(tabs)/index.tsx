@@ -79,7 +79,7 @@ export default function HomeScreen() {
 
   const toggleFavorite = async (postId: string) => {
     if (!isAuthenticated) {
-      router.push('/login');
+      router.push({ pathname: '/login', params: { redirectTo: '/' } });
       return;
     }
 
@@ -125,8 +125,8 @@ export default function HomeScreen() {
               </>
             ) : (
               <>
-                <Button title="Giriş Yap" icon={<LogIn color="#fff" size={18} />} onPress={() => router.push('/login')} />
-                <Button title="Kayıt Ol" variant="secondary" onPress={() => router.push('/register')} />
+                <Button title="Giriş Yap" icon={<LogIn color="#fff" size={18} />} onPress={() => router.push({ pathname: '/login', params: { redirectTo: '/' } })} />
+                <Button title="Kayıt Ol" variant="secondary" onPress={() => router.push({ pathname: '/register', params: { redirectTo: '/' } })} />
               </>
             )}
           </View>

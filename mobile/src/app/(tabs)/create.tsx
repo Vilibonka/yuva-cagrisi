@@ -92,7 +92,7 @@ export default function CreatePostScreen() {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace('/login');
+      router.replace({ pathname: '/login', params: { redirectTo: '/create' } });
     }
   }, [isAuthenticated, isLoading]);
 

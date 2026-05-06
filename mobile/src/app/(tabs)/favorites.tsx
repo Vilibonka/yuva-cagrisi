@@ -17,7 +17,7 @@ export default function FavoritesScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.replace('/login');
+    if (!isLoading && !isAuthenticated) router.replace({ pathname: '/login', params: { redirectTo: '/favorites' } });
   }, [isAuthenticated, isLoading]);
 
   const load = useCallback(async () => {
