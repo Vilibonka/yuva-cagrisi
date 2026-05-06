@@ -14,15 +14,20 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, isFavorite, onPress, onToggleFavorite }: PostCardProps) {
+  const [imageFailed, setImageFailed] = React.useState(false);
   const primaryImage = post.images?.find((image) => image.isPrimary) || post.images?.[0];
-  const imageUrl = buildImageUrl(primaryImage?.imageUrl);
+  const imageUrl = imageFailed ? null : buildImageUrl(primaryImage?.imageUrl);
   const species = post.pet?.species ? speciesLabels[post.pet.species] : 'Dost';
+
+  React.useEffect(() => {
+    setImageFailed(false);
+  }, [primaryImage?.imageUrl]);
 
   return (
     <Pressable style={({ pressed }) => [styles.card, pressed && styles.pressed]} onPress={onPress}>
       <View style={styles.imageWrap}>
         {imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={styles.image} />
+          <Image source={{ uri: imageUrl }} style={styles.image} onError={() => setImageFailed(true)} />
         ) : (
           <View style={styles.placeholder}>
             <ImageIcon color="#c9bdb2" size={30} />

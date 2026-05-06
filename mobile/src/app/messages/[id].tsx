@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Send } from 'lucide-react-native';
 
@@ -65,8 +65,28 @@ export default function ChatScreen() {
     };
   }, [id, socket]);
 
+  const confirmDeleteMessage = (messageId: string) => {
+    Alert.alert('Mesajı sil', 'Bu mesajı silmek istiyor musun?', [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Sil', style: 'destructive', onPress: () => void deleteMessage(messageId) },
+    ]);
+  };
+
+  const deleteMessage = async (messageId: string) => {
+    try {
+      await api.patch(`/conversations/messages/${messageId}/soft-delete`);
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === messageId ? { ...message, status: 'DELETED', content: 'Bu mesaj silindi' } : message,
+        ),
+      );
+    } catch (error) {
+      Alert.alert('Mesaj silinemedi', getApiErrorMessage(error, 'Lütfen tekrar dene.'));
+    }
+  };
+
   const sendMessage = () => {
-    if (!socket || !id || !inputValue.trim()) return;
+    if (!socket || !isConnected || !id || !inputValue.trim()) return;
     socket.emit('sendMessage', {
       conversationId: id,
       content: inputValue.trim(),
@@ -79,6 +99,8 @@ export default function ChatScreen() {
   if (loadError) {
     return <ErrorState title="Sohbet açılamadı" description={loadError} onRetry={() => loadScreen({ withLoading: true })} />;
   }
+
+  const canSend = !!socket && isConnected && !!id && !!inputValue.trim();
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
@@ -98,11 +120,15 @@ export default function ChatScreen() {
           return (
             <View style={[styles.messageRow, isMine ? styles.mineRow : styles.theirRow]}>
               {!isMine && item.sender?.fullName ? <Text style={styles.sender}>{item.sender.fullName}</Text> : null}
-              <View style={[styles.bubble, isMine ? styles.mineBubble : styles.theirBubble, deleted && styles.deletedBubble]}>
+              <Pressable
+                disabled={!isMine || deleted}
+                onLongPress={() => confirmDeleteMessage(item.id)}
+                style={[styles.bubble, isMine ? styles.mineBubble : styles.theirBubble, deleted && styles.deletedBubble]}
+              >
                 <Text style={[styles.messageText, isMine && styles.mineText, deleted && styles.deletedText]}>
                   {deleted ? 'Bu mesaj silindi' : item.content}
                 </Text>
-              </View>
+              </Pressable>
               <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
             </View>
           );
@@ -113,12 +139,12 @@ export default function ChatScreen() {
         <TextInput
           value={inputValue}
           onChangeText={setInputValue}
-          placeholder="Mesaj yaz..."
+          placeholder={isConnected ? 'Mesaj yaz...' : 'Bağlantı bekleniyor...'}
           placeholderTextColor="#a79d94"
           style={styles.input}
           multiline
         />
-        <Pressable style={[styles.sendButton, !inputValue.trim() && styles.sendButtonDisabled]} onPress={sendMessage} disabled={!inputValue.trim()}>
+        <Pressable style={[styles.sendButton, !canSend && styles.sendButtonDisabled]} onPress={sendMessage} disabled={!canSend}>
           <Send color="#fff" size={20} />
         </Pressable>
       </View>
