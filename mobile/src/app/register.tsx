@@ -1,44 +1,64 @@
-import React, { useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import React from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { z } from 'zod';
 
 import { Button, Field, Section, colors } from '@/components/Design';
 import { useAuth } from '@/context/AuthContext';
+import { getApiErrorMessage } from '@/lib/errors';
+import { emailField, emptyToUndefined, fullNamePattern, optionalPhoneField, optionalTrimmedText } from '@/lib/validation';
+
+const registerSchema = z.object({
+  fullName: z
+    .string()
+    .refine((value) => value.trim().length > 0, 'Ad Soyad gerekli.')
+    .refine((value) => value.trim().length <= 100, 'Ad Soyad en fazla 100 karakter olabilir.')
+    .refine((value) => fullNamePattern.test(value.trim()), 'Ad Soyad sadece harf ve boşluk içerebilir.'),
+  email: emailField(),
+  password: z.string().min(6, 'Şifre en az 6 karakter olmalı.').max(100, 'Şifre en fazla 100 karakter olabilir.'),
+  contactPhone: optionalPhoneField(),
+  city: optionalTrimmedText('Şehir', 100),
+  district: optionalTrimmedText('İlçe', 100),
+});
+
+type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterScreen() {
   const { signUp } = useAuth();
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
-  const [city, setCity] = useState('');
-  const [district, setDistrict] = useState('');
-  const [loading, setLoading] = useState(false);
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterFormValues>({
+    defaultValues: {
+      fullName: '',
+      email: '',
+      password: '',
+      contactPhone: '',
+      city: '',
+      district: '',
+    },
+    mode: 'onTouched',
+    resolver: zodResolver(registerSchema),
+  });
 
-  const submit = async () => {
-    if (!fullName.trim() || !email.trim() || password.length < 6) {
-      Alert.alert('Eksik bilgi', 'Ad soyad, geçerli e-posta ve en az 6 karakter şifre gerekli.');
-      return;
-    }
-
-    setLoading(true);
+  const submit = handleSubmit(async (values) => {
     try {
       await signUp({
-        fullName: fullName.trim(),
-        email: email.trim(),
-        password,
-        contactPhone: contactPhone.trim() || undefined,
-        city: city.trim() || undefined,
-        district: district.trim() || undefined,
+        fullName: values.fullName.trim(),
+        email: values.email.trim(),
+        password: values.password,
+        contactPhone: emptyToUndefined(values.contactPhone),
+        city: emptyToUndefined(values.city),
+        district: emptyToUndefined(values.district),
       });
       router.replace('/');
-    } catch (error: any) {
-      const message = error?.response?.data?.message;
-      Alert.alert('Kayıt başarısız', Array.isArray(message) ? message.join('\n') : message || 'Lütfen bilgileri kontrol et.');
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      Alert.alert('Kayıt başarısız', getApiErrorMessage(error, 'Lütfen bilgileri kontrol et.'));
     }
-  };
+  });
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
@@ -49,13 +69,64 @@ export default function RegisterScreen() {
         </View>
 
         <Section>
-          <Field label="Ad Soyad" value={fullName} onChangeText={setFullName} />
-          <Field label="E-posta" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-          <Field label="Şifre" value={password} onChangeText={setPassword} secureTextEntry />
-          <Field label="Telefon" value={contactPhone} onChangeText={setContactPhone} keyboardType="phone-pad" />
-          <Field label="Şehir" value={city} onChangeText={setCity} />
-          <Field label="İlçe" value={district} onChangeText={setDistrict} />
-          <Button title="Kayıt Ol" loading={loading} onPress={submit} />
+          <Controller
+            control={control}
+            name="fullName"
+            render={({ field: { onBlur, onChange, value } }) => (
+              <Field label="Ad Soyad" value={value} onBlur={onBlur} onChangeText={onChange} error={errors.fullName?.message} />
+            )}
+          />
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { onBlur, onChange, value } }) => (
+              <Field
+                label="E-posta"
+                value={value}
+                onBlur={onBlur}
+                onChangeText={onChange}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                error={errors.email?.message}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { onBlur, onChange, value } }) => (
+              <Field label="Şifre" value={value} onBlur={onBlur} onChangeText={onChange} secureTextEntry error={errors.password?.message} />
+            )}
+          />
+          <Controller
+            control={control}
+            name="contactPhone"
+            render={({ field: { onBlur, onChange, value } }) => (
+              <Field
+                label="Telefon"
+                value={value}
+                onBlur={onBlur}
+                onChangeText={onChange}
+                keyboardType="phone-pad"
+                error={errors.contactPhone?.message}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="city"
+            render={({ field: { onBlur, onChange, value } }) => (
+              <Field label="Şehir" value={value} onBlur={onBlur} onChangeText={onChange} error={errors.city?.message} />
+            )}
+          />
+          <Controller
+            control={control}
+            name="district"
+            render={({ field: { onBlur, onChange, value } }) => (
+              <Field label="İlçe" value={value} onBlur={onBlur} onChangeText={onChange} error={errors.district?.message} />
+            )}
+          />
+          <Button title="Kayıt Ol" loading={isSubmitting} onPress={submit} />
           <Button title="Zaten hesabım var" variant="ghost" onPress={() => router.push('/login')} />
         </Section>
       </ScrollView>

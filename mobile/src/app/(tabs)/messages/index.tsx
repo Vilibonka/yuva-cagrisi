@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
-import { EmptyState, LoadingState, colors } from '@/components/Design';
+import { EmptyState, ErrorState, LoadingState, colors } from '@/components/Design';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
+import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/labels';
 import { Conversation } from '@/types';
 
@@ -13,6 +14,7 @@ export default function MessagesScreen() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.replace('/login');
@@ -24,20 +26,36 @@ export default function MessagesScreen() {
     setConversations(data);
   }, [isAuthenticated]);
 
+  const loadScreen = useCallback(
+    async ({ withLoading = false }: { withLoading?: boolean } = {}) => {
+      if (withLoading) setLoading(true);
+      setLoadError(null);
+      try {
+        await load();
+      } catch (error) {
+        setLoadError(getApiErrorMessage(error, 'Mesajlar yüklenemedi. Lütfen tekrar dene.'));
+      } finally {
+        if (withLoading) setLoading(false);
+      }
+    },
+    [load],
+  );
+
   useEffect(() => {
-    setLoading(true);
-    load()
-      .catch((error) => Alert.alert('Mesajlar açılamadı', error?.response?.data?.message || 'Lütfen tekrar dene.'))
-      .finally(() => setLoading(false));
-  }, [load]);
+    void loadScreen({ withLoading: true });
+  }, [loadScreen]);
 
   const refresh = async () => {
     setRefreshing(true);
-    await load().catch(() => undefined);
+    await loadScreen();
     setRefreshing(false);
   };
 
   if (isLoading || loading) return <LoadingState label="Mesajlar yükleniyor..." />;
+
+  if (loadError) {
+    return <ErrorState title="Mesajlar açılamadı" description={loadError} onRetry={() => loadScreen({ withLoading: true })} />;
+  }
 
   return (
     <FlatList

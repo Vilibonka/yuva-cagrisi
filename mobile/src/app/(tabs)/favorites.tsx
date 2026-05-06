@@ -2,10 +2,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, FlatList, RefreshControl, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 
-import { EmptyState, LoadingState, colors } from '@/components/Design';
+import { EmptyState, ErrorState, LoadingState, colors } from '@/components/Design';
 import { PostCard } from '@/components/PostCard';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
+import { getApiErrorMessage } from '@/lib/errors';
 import { SavedPost } from '@/types';
 
 export default function FavoritesScreen() {
@@ -13,6 +14,7 @@ export default function FavoritesScreen() {
   const [items, setItems] = useState<SavedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.replace('/login');
@@ -24,25 +26,45 @@ export default function FavoritesScreen() {
     setItems(data);
   }, [isAuthenticated]);
 
+  const loadScreen = useCallback(
+    async ({ withLoading = false }: { withLoading?: boolean } = {}) => {
+      if (withLoading) setLoading(true);
+      setLoadError(null);
+      try {
+        await load();
+      } catch (error) {
+        setLoadError(getApiErrorMessage(error, 'Favoriler yüklenemedi. Lütfen tekrar dene.'));
+      } finally {
+        if (withLoading) setLoading(false);
+      }
+    },
+    [load],
+  );
+
   useEffect(() => {
-    setLoading(true);
-    load()
-      .catch((error) => Alert.alert('Favoriler açılamadı', error?.response?.data?.message || 'Lütfen tekrar dene.'))
-      .finally(() => setLoading(false));
-  }, [load]);
+    void loadScreen({ withLoading: true });
+  }, [loadScreen]);
 
   const refresh = async () => {
     setRefreshing(true);
-    await load().catch(() => undefined);
+    await loadScreen();
     setRefreshing(false);
   };
 
   const toggleFavorite = async (postId: string) => {
-    await api.post(`/users/me/saved-posts/${postId}`);
-    setItems((current) => current.filter((item) => item.postId !== postId));
+    try {
+      await api.post(`/users/me/saved-posts/${postId}`);
+      setItems((current) => current.filter((item) => item.postId !== postId));
+    } catch (error) {
+      Alert.alert('Favori güncellenemedi', getApiErrorMessage(error, 'Lütfen tekrar dene.'));
+    }
   };
 
   if (isLoading || loading) return <LoadingState label="Favoriler yükleniyor..." />;
+
+  if (loadError) {
+    return <ErrorState title="Favoriler açılamadı" description={loadError} onRetry={() => loadScreen({ withLoading: true })} />;
+  }
 
   return (
     <FlatList

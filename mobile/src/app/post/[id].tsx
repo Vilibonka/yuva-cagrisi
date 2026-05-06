@@ -1,14 +1,31 @@
+import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useCallback, useEffect, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Heart, MessageCircle, Send } from 'lucide-react-native';
+import { z } from 'zod';
 
-import { Badge, Button, Field, LoadingState, Section, colors } from '@/components/Design';
+import { Badge, Button, ErrorState, Field, LoadingState, Section, colors } from '@/components/Design';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
 import { buildImageUrl } from '@/lib/config';
+import { getApiErrorMessage } from '@/lib/errors';
 import { genderLabels, postTypeLabels, requestStatusLabels, sizeLabels, speciesLabels } from '@/lib/labels';
+import { emptyToUndefined, optionalPhoneField, requiredTrimmed } from '@/lib/validation';
 import { AdoptionRequest, PetPost, SavedPost } from '@/types';
+
+const adoptionRequestSchema = z.object({
+  message: requiredTrimmed('Başvuru mesajı', 1000).refine((value) => value.trim().length >= 10, 'Başvuru mesajı en az 10 karakter olmalı.'),
+  contactPhone: optionalPhoneField(),
+});
+
+type AdoptionRequestFormValues = z.infer<typeof adoptionRequestSchema>;
+
+const adoptionRequestDefaults: AdoptionRequestFormValues = {
+  message: '',
+  contactPhone: '',
+};
 
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -16,15 +33,25 @@ export default function PostDetailScreen() {
   const [post, setPost] = useState<PetPost | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [myRequest, setMyRequest] = useState<AdoptionRequest | null>(null);
-  const [message, setMessage] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<AdoptionRequestFormValues>({
+    defaultValues: adoptionRequestDefaults,
+    mode: 'onTouched',
+    resolver: zodResolver(adoptionRequestSchema),
+  });
 
   const load = useCallback(async () => {
     if (!id) return;
     const [{ data: postData }] = await Promise.all([api.get<PetPost>(`/pet-posts/${id}`)]);
     setPost(postData);
+    setIsFavorite(false);
+    setMyRequest(null);
 
     if (isAuthenticated) {
       const [favoriteRes, requestRes] = await Promise.all([
@@ -36,12 +63,22 @@ export default function PostDetailScreen() {
     }
   }, [id, isAuthenticated]);
 
-  useEffect(() => {
+  const fetchPost = useCallback(async () => {
     setLoading(true);
-    load()
-      .catch((error) => Alert.alert('İlan açılamadı', error?.response?.data?.message || 'Lütfen tekrar dene.'))
-      .finally(() => setLoading(false));
+    setLoadError(null);
+    try {
+      await load();
+    } catch (error) {
+      setPost(null);
+      setLoadError(getApiErrorMessage(error, 'İlan detayı yüklenemedi. Lütfen tekrar dene.'));
+    } finally {
+      setLoading(false);
+    }
   }, [load]);
+
+  useEffect(() => {
+    void fetchPost();
+  }, [fetchPost]);
 
   const toggleFavorite = async () => {
     if (!post) return;
@@ -50,37 +87,34 @@ export default function PostDetailScreen() {
       return;
     }
 
-    const { data } = await api.post(`/users/me/saved-posts/${post.id}`);
-    setIsFavorite(data.saved);
+    try {
+      const { data } = await api.post(`/users/me/saved-posts/${post.id}`);
+      setIsFavorite(data.saved);
+    } catch (error) {
+      Alert.alert('Favori güncellenemedi', getApiErrorMessage(error, 'Lütfen tekrar dene.'));
+    }
   };
 
-  const submitRequest = async () => {
+  const submitRequest = handleSubmit(async (values) => {
     if (!post) return;
     if (!isAuthenticated) {
       router.push('/login');
       return;
     }
-    if (message.trim().length < 10) {
-      Alert.alert('Biraz daha bilgi', 'Başvuru mesajı en az 10 karakter olmalı.');
-      return;
-    }
 
-    setSubmitting(true);
     try {
       const { data } = await api.post<AdoptionRequest>('/adoption-requests', {
         postId: post.id,
-        message: message.trim(),
-        contactPhone: contactPhone.trim() || user?.contactPhone || undefined,
+        message: values.message.trim(),
+        contactPhone: emptyToUndefined(values.contactPhone) || user?.contactPhone || undefined,
       });
       setMyRequest(data);
-      setMessage('');
+      reset(adoptionRequestDefaults);
       Alert.alert('Başvuru gönderildi', 'İlan sahibi başvurunu inceleyebilecek.');
-    } catch (error: any) {
-      Alert.alert('Başvuru gönderilemedi', error?.response?.data?.message || 'Lütfen tekrar dene.');
-    } finally {
-      setSubmitting(false);
+    } catch (error) {
+      Alert.alert('Başvuru gönderilemedi', getApiErrorMessage(error, 'Lütfen tekrar dene.'));
     }
-  };
+  });
 
   const startConversation = async () => {
     if (!post?.owner?.id) return;
@@ -95,13 +129,21 @@ export default function PostDetailScreen() {
         postId: post.id,
       });
       router.push({ pathname: '/messages/[id]', params: { id: data.id } });
-    } catch (error: any) {
-      Alert.alert('Sohbet açılamadı', error?.response?.data?.message || 'Lütfen tekrar dene.');
+    } catch (error) {
+      Alert.alert('Sohbet açılamadı', getApiErrorMessage(error, 'Lütfen tekrar dene.'));
     }
   };
 
-  if (loading || !post) {
+  if (loading) {
     return <LoadingState label="İlan detayı açılıyor..." />;
+  }
+
+  if (loadError) {
+    return <ErrorState title="İlan açılamadı" description={loadError} onRetry={fetchPost} />;
+  }
+
+  if (!post) {
+    return <ErrorState title="İlan bulunamadı" description="Bu ilan kaldırılmış veya erişilemiyor olabilir." onRetry={fetchPost} />;
   }
 
   const images = post.images || [];
@@ -169,9 +211,37 @@ export default function PostDetailScreen() {
             </>
           ) : (
             <>
-              <Field label="Başvuru mesajı" value={message} onChangeText={setMessage} multiline placeholder="Neden sahiplenmek istiyorsun? Yaşam koşullarını kısaca anlat." />
-              <Field label="İletişim telefonu" value={contactPhone} onChangeText={setContactPhone} keyboardType="phone-pad" placeholder={user?.contactPhone || 'Opsiyonel'} />
-              <Button title="Başvuruyu Gönder" loading={submitting} icon={<Send color="#fff" size={18} />} onPress={submitRequest} />
+              <Controller
+                control={control}
+                name="message"
+                render={({ field: { onBlur, onChange, value } }) => (
+                  <Field
+                    label="Başvuru mesajı"
+                    value={value}
+                    onBlur={onBlur}
+                    onChangeText={onChange}
+                    multiline
+                    placeholder="Neden sahiplenmek istiyorsun? Yaşam koşullarını kısaca anlat."
+                    error={errors.message?.message}
+                  />
+                )}
+              />
+              <Controller
+                control={control}
+                name="contactPhone"
+                render={({ field: { onBlur, onChange, value } }) => (
+                  <Field
+                    label="İletişim telefonu"
+                    value={value}
+                    onBlur={onBlur}
+                    onChangeText={onChange}
+                    keyboardType="phone-pad"
+                    placeholder={user?.contactPhone || 'Opsiyonel'}
+                    error={errors.contactPhone?.message}
+                  />
+                )}
+              />
+              <Button title="Başvuruyu Gönder" loading={isSubmitting} icon={<Send color="#fff" size={18} />} onPress={submitRequest} />
             </>
           )}
         </Section>

@@ -103,6 +103,26 @@ export function EmptyState({ title, description }: { title: string; description?
   );
 }
 
+export function ErrorState({
+  title = 'Bir şey ters gitti',
+  description,
+  actionLabel = 'Tekrar Dene',
+  onRetry,
+}: {
+  title?: string;
+  description?: string;
+  actionLabel?: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <View style={styles.stateWrap}>
+      <Text style={styles.errorTitle}>{title}</Text>
+      {description ? <Text style={styles.emptyDescription}>{description}</Text> : null}
+      {onRetry ? <Button title={actionLabel} variant="secondary" onPress={onRetry} /> : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
@@ -187,4 +207,15 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { color: colors.ink, fontSize: 17, fontWeight: '900', textAlign: 'center' },
   emptyDescription: { color: colors.muted, marginTop: 8, textAlign: 'center' },
+  stateWrap: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.line,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 12,
+    margin: 16,
+    padding: 24,
+  },
+  errorTitle: { color: colors.danger, fontSize: 17, fontWeight: '900', textAlign: 'center' },
 });

@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Send } from 'lucide-react-native';
 
-import { LoadingState, colors } from '@/components/Design';
+import { ErrorState, LoadingState, colors } from '@/components/Design';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/hooks/useSocket';
 import api from '@/lib/api';
+import { getApiErrorMessage } from '@/lib/errors';
 import { formatTime } from '@/lib/labels';
 import { Message } from '@/types';
 
@@ -17,6 +18,7 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const listRef = useRef<FlatList<Message>>(null);
 
   const load = useCallback(async () => {
@@ -25,12 +27,25 @@ export default function ChatScreen() {
     setMessages(data);
   }, [id]);
 
+  const loadScreen = useCallback(
+    async ({ withLoading = false }: { withLoading?: boolean } = {}) => {
+      if (withLoading) setLoading(true);
+      setLoadError(null);
+      try {
+        await load();
+      } catch (error) {
+        setLoadError(getApiErrorMessage(error, 'Sohbet yüklenemedi. Lütfen tekrar dene.'));
+      } finally {
+        if (withLoading) setLoading(false);
+      }
+    },
+    [load],
+  );
+
   useEffect(() => {
     setLoading(true);
-    load()
-      .catch((error) => Alert.alert('Sohbet açılamadı', error?.response?.data?.message || 'Lütfen tekrar dene.'))
-      .finally(() => setLoading(false));
-  }, [load]);
+    void loadScreen({ withLoading: true });
+  }, [loadScreen]);
 
   useEffect(() => {
     if (!socket || !id) return;
@@ -60,6 +75,10 @@ export default function ChatScreen() {
   };
 
   if (loading) return <LoadingState label="Sohbet yükleniyor..." />;
+
+  if (loadError) {
+    return <ErrorState title="Sohbet açılamadı" description={loadError} onRetry={() => loadScreen({ withLoading: true })} />;
+  }
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>

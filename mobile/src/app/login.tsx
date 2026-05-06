@@ -1,32 +1,45 @@
-import React, { useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import React from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { z } from 'zod';
 
 import { Button, Field, Section, colors } from '@/components/Design';
 import { useAuth } from '@/context/AuthContext';
+import { getApiErrorMessage } from '@/lib/errors';
+import { emailField } from '@/lib/validation';
+
+const loginSchema = z.object({
+  email: emailField(),
+  password: z.string().min(1, 'Şifre gerekli.').max(100, 'Şifre en fazla 100 karakter olabilir.'),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormValues>({
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+    mode: 'onTouched',
+    resolver: zodResolver(loginSchema),
+  });
 
-  const submit = async () => {
-    if (!email.trim() || !password) {
-      Alert.alert('Eksik bilgi', 'E-posta ve şifre gerekli.');
-      return;
-    }
-
-    setLoading(true);
+  const submit = handleSubmit(async (values) => {
     try {
-      await signIn(email.trim(), password);
+      await signIn(values.email.trim(), values.password);
       router.replace('/');
-    } catch (error: any) {
-      Alert.alert('Giriş başarısız', error?.response?.data?.message || 'Bilgilerini kontrol edip tekrar dene.');
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      Alert.alert('Giriş başarısız', getApiErrorMessage(error, 'Bilgilerini kontrol edip tekrar dene.'));
     }
-  };
+  });
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
@@ -37,9 +50,36 @@ export default function LoginScreen() {
         </View>
 
         <Section>
-          <Field label="E-posta" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-          <Field label="Şifre" value={password} onChangeText={setPassword} secureTextEntry />
-          <Button title="Giriş Yap" loading={loading} onPress={submit} />
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { onBlur, onChange, value } }) => (
+              <Field
+                label="E-posta"
+                value={value}
+                onBlur={onBlur}
+                onChangeText={onChange}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                error={errors.email?.message}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { onBlur, onChange, value } }) => (
+              <Field
+                label="Şifre"
+                value={value}
+                onBlur={onBlur}
+                onChangeText={onChange}
+                secureTextEntry
+                error={errors.password?.message}
+              />
+            )}
+          />
+          <Button title="Giriş Yap" loading={isSubmitting} onPress={submit} />
           <Button title="Hesabım yok, kayıt olayım" variant="ghost" onPress={() => router.push('/register')} />
         </Section>
       </ScrollView>

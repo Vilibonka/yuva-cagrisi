@@ -3,10 +3,11 @@ import { FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View 
 import { router } from 'expo-router';
 import { LogIn, MessageSquare, Plus, Search, User } from 'lucide-react-native';
 
-import { Button, EmptyState, LoadingState, colors } from '@/components/Design';
+import { Button, EmptyState, ErrorState, LoadingState, colors } from '@/components/Design';
 import { PostCard } from '@/components/PostCard';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
+import { getApiErrorMessage } from '@/lib/errors';
 import { speciesLabels } from '@/lib/labels';
 import { PetPost, SavedPost, Species } from '@/types';
 
@@ -25,6 +26,7 @@ export default function HomeScreen() {
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [city, setCity] = useState('');
   const [species, setSpecies] = useState<Species | ''>('');
 
@@ -50,16 +52,28 @@ export default function HomeScreen() {
     setFavoriteIds(new Set(data.map((item) => item.postId)));
   }, [isAuthenticated]);
 
+  const loadScreen = useCallback(
+    async ({ withLoading = false }: { withLoading?: boolean } = {}) => {
+      if (withLoading) setLoading(true);
+      setLoadError(null);
+      try {
+        await Promise.all([loadPosts(), loadFavorites()]);
+      } catch (error) {
+        setLoadError(getApiErrorMessage(error, 'İlanlar yüklenemedi. Lütfen tekrar dene.'));
+      } finally {
+        if (withLoading) setLoading(false);
+      }
+    },
+    [loadFavorites, loadPosts],
+  );
+
   useEffect(() => {
-    setLoading(true);
-    Promise.all([loadPosts(), loadFavorites()])
-      .catch((error) => console.warn(error?.response?.data || error.message))
-      .finally(() => setLoading(false));
-  }, [loadFavorites, loadPosts]);
+    void loadScreen({ withLoading: true });
+  }, [loadScreen]);
 
   const refresh = async () => {
     setRefreshing(true);
-    await Promise.all([loadPosts(), loadFavorites()]).catch((error) => console.warn(error?.message));
+    await loadScreen();
     setRefreshing(false);
   };
 
@@ -80,6 +94,10 @@ export default function HomeScreen() {
 
   if (authLoading || loading) {
     return <LoadingState label="İlanlar hazırlanıyor..." />;
+  }
+
+  if (loadError) {
+    return <ErrorState title="İlanlar yüklenemedi" description={loadError} onRetry={() => loadScreen({ withLoading: true })} />;
   }
 
   return (

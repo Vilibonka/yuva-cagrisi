@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text } from 'react-native';
 import { router } from 'expo-router';
 
-import { Badge, EmptyState, LoadingState, colors } from '@/components/Design';
+import { Badge, EmptyState, ErrorState, LoadingState, colors } from '@/components/Design';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
+import { getApiErrorMessage } from '@/lib/errors';
 import { formatDate, requestStatusLabels } from '@/lib/labels';
 import { AdoptionRequest } from '@/types';
 
@@ -13,6 +14,7 @@ export default function RequestsScreen() {
   const [requests, setRequests] = useState<AdoptionRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.replace('/login');
@@ -24,20 +26,36 @@ export default function RequestsScreen() {
     setRequests(data);
   }, [isAuthenticated]);
 
+  const loadScreen = useCallback(
+    async ({ withLoading = false }: { withLoading?: boolean } = {}) => {
+      if (withLoading) setLoading(true);
+      setLoadError(null);
+      try {
+        await load();
+      } catch (error) {
+        setLoadError(getApiErrorMessage(error, 'Başvurular yüklenemedi. Lütfen tekrar dene.'));
+      } finally {
+        if (withLoading) setLoading(false);
+      }
+    },
+    [load],
+  );
+
   useEffect(() => {
-    setLoading(true);
-    load()
-      .catch((error) => Alert.alert('Başvurular açılamadı', error?.response?.data?.message || 'Lütfen tekrar dene.'))
-      .finally(() => setLoading(false));
-  }, [load]);
+    void loadScreen({ withLoading: true });
+  }, [loadScreen]);
 
   const refresh = async () => {
     setRefreshing(true);
-    await load().catch(() => undefined);
+    await loadScreen();
     setRefreshing(false);
   };
 
   if (isLoading || loading) return <LoadingState label="Başvurular yükleniyor..." />;
+
+  if (loadError) {
+    return <ErrorState title="Başvurular açılamadı" description={loadError} onRetry={() => loadScreen({ withLoading: true })} />;
+  }
 
   return (
     <FlatList
