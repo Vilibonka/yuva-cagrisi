@@ -2,11 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { User, LogOut, Heart, Settings, PlusSquare, LayoutDashboard, Bell, MessageSquare, X, Clock, Info } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
-import toast from 'react-hot-toast';
+import { showInfo } from '@/utils/toast';
 import api from '@/api';
 
 interface NotificationItem {
@@ -21,6 +21,7 @@ interface NotificationItem {
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const { socket } = useSocket({ userId: user?.id });
   const [unreadNotifications, setUnreadNotifications] = React.useState(0);
   const [unreadMessages, setUnreadMessages] = React.useState(0);
@@ -68,11 +69,11 @@ export default function Navbar() {
       if (notification.type === 'NEW_MESSAGE') {
         // Only increase message badge, not notification badge
         setUnreadMessages((prev) => prev + 1);
-        toast(notification.message || 'Yeni bir mesajınız var!', { icon: '✉️', duration: 4000 });
+        showInfo(notification.message || 'Yeni bir mesajınız var!', { icon: '✉️', duration: 4000 });
       } else {
         setUnreadNotifications((prev) => prev + 1);
         setNotifications((prev) => [notification, ...prev]);
-        toast(notification.message || 'Yeni bir bildiriminiz var.', { icon: '🔔', duration: 5000 });
+        showInfo(notification.message || 'Yeni bir bildiriminiz var.', { icon: '🔔', duration: 5000 });
       }
     };
 
@@ -146,7 +147,14 @@ export default function Navbar() {
             İlanlar
           </Link>
           <Link
-            href="/listings/create"
+            href={isAuthenticated ? "/listings/create" : "/login"}
+            onClick={(e) => {
+              if (!isAuthenticated) {
+                e.preventDefault();
+                showInfo('İlan vermek için lütfen giriş yapın.');
+                router.push('/login');
+              }
+            }}
             className={`flex items-center gap-1.5 text-sm font-semibold transition-colors ${
               pathname === '/listings/create' ? 'text-orange-600' : 'text-gray-600 hover:text-orange-600'
             }`}

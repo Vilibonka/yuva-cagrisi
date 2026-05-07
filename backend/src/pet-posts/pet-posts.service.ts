@@ -4,6 +4,20 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CreatePetPostDto } from './dto/create-pet-post.dto';
 import { PostStatus, Prisma, RequestStatus } from '@prisma/client';
 
+const AGE_RANGES: Record<string, { min?: number; max?: number }> = {
+  AGE_0_6: { min: 0, max: 6 },
+  AGE_6_24: { min: 6, max: 24 },
+  AGE_24_96: { min: 24, max: 96 },
+  AGE_96_PLUS: { min: 96 },
+};
+
+const WEIGHT_RANGES: Record<string, { min?: number; max?: number }> = {
+  WEIGHT_0_5: { min: 0, max: 5 },
+  WEIGHT_5_15: { min: 5, max: 15 },
+  WEIGHT_15_30: { min: 15, max: 30 },
+  WEIGHT_30_PLUS: { min: 30 },
+};
+
 @Injectable()
 export class PetPostsService {
   constructor(
@@ -20,7 +34,8 @@ export class PetPostsService {
           species: createPetPostDto.species,
           breed: createPetPostDto.breed,
           gender: createPetPostDto.gender,
-          estimatedAgeMonths: createPetPostDto.estimatedAgeMonths ? parseInt(createPetPostDto.estimatedAgeMonths as any, 10) : null,
+          estimatedAgeMonths: createPetPostDto.estimatedAgeMonths ?? null,
+          weightKg: createPetPostDto.weightKg ?? null,
           size: createPetPostDto.size,
           healthSummary: createPetPostDto.healthSummary,
           temperament: createPetPostDto.temperament,
@@ -67,39 +82,84 @@ export class PetPostsService {
     });
   }
 
-  async findAllActive(filters: { species?: string; city?: string; size?: string; gender?: string }) {
+  async findAllActive(filters: {
+    species?: string;
+    city?: string;
+    gender?: string;
+    size?: string;
+    ageRange?: string;
+    weightRange?: string;
+    page?: string;
+    limit?: string;
+  }) {
     const whereCondition: Prisma.PetPostWhereInput = {
       status: PostStatus.ACTIVE,
     };
 
     if (filters.city) {
-      whereCondition.city = { equals: filters.city, mode: 'insensitive' };
+      whereCondition.city = { contains: filters.city, mode: 'insensitive' };
     }
 
-    if (filters.species || filters.size || filters.gender) {
-      whereCondition.pet = {};
+    if (filters.species || filters.size || filters.gender || filters.ageRange || filters.weightRange) {
+      const petWhere: Prisma.PetWhereInput = {};
+
       if (filters.species) {
-        whereCondition.pet.species = filters.species as any;
+        petWhere.species = filters.species as any;
       }
       if (filters.size) {
-        whereCondition.pet.size = filters.size as any;
+        petWhere.size = filters.size as any;
       }
       if (filters.gender) {
-        whereCondition.pet.gender = filters.gender as any;
+        petWhere.gender = filters.gender as any;
       }
+
+      const ageRange = filters.ageRange ? AGE_RANGES[filters.ageRange] : undefined;
+      if (ageRange) {
+        petWhere.estimatedAgeMonths = {
+          ...(ageRange.min !== undefined ? { gte: ageRange.min } : {}),
+          ...(ageRange.max !== undefined ? { lte: ageRange.max } : {}),
+        };
+      }
+
+      const weightRange = filters.weightRange ? WEIGHT_RANGES[filters.weightRange] : undefined;
+      if (weightRange) {
+        petWhere.weightKg = {
+          ...(weightRange.min !== undefined ? { gte: weightRange.min } : {}),
+          ...(weightRange.max !== undefined ? { lte: weightRange.max } : {}),
+        };
+      }
+
+      whereCondition.pet = petWhere;
     }
 
-    return this.prisma.petPost.findMany({
-      where: whereCondition,
-      include: {
-        pet: true,
-        images: true,
-        owner: {
-          select: { id: true, fullName: true, profileImageUrl: true }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+    const page = filters.page ? parseInt(filters.page, 10) : 1;
+    const limit = filters.limit ? parseInt(filters.limit, 10) : 12;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.prisma.petPost.findMany({
+        where: whereCondition,
+        include: {
+          pet: true,
+          images: true,
+          owner: {
+            select: { id: true, fullName: true, profileImageUrl: true }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.petPost.count({ where: whereCondition })
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    };
   }
 
   async findOne(postId: string) {

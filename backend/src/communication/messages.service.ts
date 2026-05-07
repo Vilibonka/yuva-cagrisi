@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { MessageStatus } from '@prisma/client';
+import { MessageStatus, UserReportReason } from '@prisma/client';
 
 @Injectable()
 export class MessagesService {
@@ -9,6 +9,108 @@ export class MessagesService {
     private prisma: PrismaService,
     private notificationsService: NotificationsService
   ) {}
+
+  // ───── Block / Unblock ─────
+
+  async blockUser(blockerUserId: string, blockedUserId: string) {
+    if (blockerUserId === blockedUserId) {
+      throw new BadRequestException('Kendinizi engelleyemezsiniz.');
+    }
+
+    const existing = await this.prisma.userBlock.findUnique({
+      where: { blockerUserId_blockedUserId: { blockerUserId, blockedUserId } }
+    });
+    if (existing) {
+      throw new BadRequestException('Bu kullanıcı zaten engellenmiş.');
+    }
+
+    return this.prisma.userBlock.create({
+      data: { blockerUserId, blockedUserId }
+    });
+  }
+
+  async unblockUser(blockerUserId: string, blockedUserId: string) {
+    const existing = await this.prisma.userBlock.findUnique({
+      where: { blockerUserId_blockedUserId: { blockerUserId, blockedUserId } }
+    });
+    if (!existing) {
+      throw new NotFoundException('Engel kaydı bulunamadı.');
+    }
+
+    return this.prisma.userBlock.delete({
+      where: { id: existing.id }
+    });
+  }
+
+  async isBlocked(userId1: string, userId2: string): Promise<boolean> {
+    const block = await this.prisma.userBlock.findFirst({
+      where: {
+        OR: [
+          { blockerUserId: userId1, blockedUserId: userId2 },
+          { blockerUserId: userId2, blockedUserId: userId1 },
+        ]
+      }
+    });
+    return !!block;
+  }
+
+  // ───── Report User ─────
+
+  async reportUser(reporterUserId: string, reportedUserId: string, reasons: UserReportReason[], description?: string) {
+    if (reporterUserId === reportedUserId) {
+      throw new BadRequestException('Kendinizi şikâyet edemezsiniz.');
+    }
+    if (!reasons || reasons.length === 0) {
+      throw new BadRequestException('En az bir şikâyet nedeni seçmelisiniz.');
+    }
+
+    return this.prisma.userReport.create({
+      data: {
+        reporterUserId,
+        reportedUserId,
+        reasons,
+        description: description || null,
+      }
+    });
+  }
+
+  // ───── Delete Conversation ─────
+
+  async deleteConversation(userId: string, conversationId: string) {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: { participants: true }
+    });
+
+    if (!conversation) {
+      throw new NotFoundException('Sohbet bulunamadı.');
+    }
+
+    const isParticipant = conversation.participants.some(p => p.userId === userId);
+    if (!isParticipant) {
+      throw new ForbiddenException('Bu sohbete erişim yetkiniz yok.');
+    }
+
+    // Remove user from conversation
+    await this.prisma.conversationParticipant.delete({
+      where: {
+        conversationId_userId: { conversationId, userId }
+      }
+    });
+
+    // If no participants left, delete the whole conversation
+    const remaining = await this.prisma.conversationParticipant.count({
+      where: { conversationId }
+    });
+
+    if (remaining === 0) {
+      await this.prisma.conversation.delete({ where: { id: conversationId } });
+    }
+
+    return { deleted: true };
+  }
+
+  // ───── Messages ─────
 
   async createMessage(senderUserId: string, conversationId: string, content: string) {
     const conversation = await this.prisma.conversation.findUnique({
@@ -24,6 +126,15 @@ export class MessagesService {
     const isParticipant = conversation.participants.some(p => p.userId === senderUserId);
     if (!isParticipant) {
       throw new ForbiddenException('Not a participant in this conversation');
+    }
+
+    // Check if blocked by any other participant
+    const otherParticipants = conversation.participants.filter(p => p.userId !== senderUserId);
+    for (const participant of otherParticipants) {
+      const blocked = await this.isBlocked(senderUserId, participant.userId);
+      if (blocked) {
+        throw new ForbiddenException('Bu kullanıcıyla iletişim kurulamıyor.');
+      }
     }
 
     const message = await this.prisma.message.create({
@@ -42,7 +153,6 @@ export class MessagesService {
     });
 
     // Send notifications to other participants
-    const otherParticipants = conversation.participants.filter(p => p.userId !== senderUserId);
     for (const participant of otherParticipants) {
       await this.notificationsService.createNewMessageNotification(
         participant.userId,
@@ -139,6 +249,12 @@ export class MessagesService {
   async findOrCreateConversation(userId: string, targetUserId: string, postId?: string) {
     if (userId === targetUserId) {
       throw new ForbiddenException('You cannot start a conversation with yourself');
+    }
+
+    // Check block status before creating/finding conversation
+    const blocked = await this.isBlocked(userId, targetUserId);
+    if (blocked) {
+      throw new ForbiddenException('Bu kullanıcıyla iletişim kurulamıyor.');
     }
 
     const whereClause: any = {

@@ -21,6 +21,11 @@ export class CreatePetPostDto {
   @Type(() => Number)
   estimatedAgeMonths?: number;
 
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  weightKg?: number;
+
   @IsEnum(AnimalSize)
   @IsOptional()
   size?: AnimalSize;

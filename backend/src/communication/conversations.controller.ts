@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Patch, Body, Post, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Patch, Body, Post, Delete, Req, UseGuards } from '@nestjs/common';
 import { MessagesService } from './messages.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -39,5 +39,38 @@ export class ConversationsController {
   ) {
     const userId = req.user.id;
     return this.messagesService.findOrCreateConversation(userId, body.targetUserId, body.postId);
+  }
+
+  // ───── Block / Unblock ─────
+
+  @Post('block-user')
+  async blockUser(@Body() body: { targetUserId: string }, @Req() req: any) {
+    const userId = req.user.id;
+    return this.messagesService.blockUser(userId, body.targetUserId);
+  }
+
+  @Delete('block-user/:targetUserId')
+  async unblockUser(@Param('targetUserId') targetUserId: string, @Req() req: any) {
+    const userId = req.user.id;
+    return this.messagesService.unblockUser(userId, targetUserId);
+  }
+
+  // ───── Report User ─────
+
+  @Post('report-user')
+  async reportUser(
+    @Body() body: { targetUserId: string; reasons: string[]; description?: string },
+    @Req() req: any
+  ) {
+    const userId = req.user.id;
+    return this.messagesService.reportUser(userId, body.targetUserId, body.reasons as any, body.description);
+  }
+
+  // ───── Delete Conversation ─────
+
+  @Delete(':id')
+  async deleteConversation(@Param('id') conversationId: string, @Req() req: any) {
+    const userId = req.user.id;
+    return this.messagesService.deleteConversation(userId, conversationId);
   }
 }

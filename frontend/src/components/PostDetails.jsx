@@ -12,6 +12,8 @@ import RequestStatusTimeline from '@/components/RequestStatusTimeline';
 import { getStoredUser } from '@/lib/auth';
 import Chat from './Chat';
 import ReportModal from './ReportModal';
+import toast from 'react-hot-toast';
+import { showSuccess, showError } from '@/utils/toast';
 
 function formatDate(value) {
   if (!value) {
@@ -211,50 +213,66 @@ export default function PostDetails() {
     }
   };
 
-  const handleReview = async (requestId, status) => {
-    const confirmationMessage = status === 'APPROVED'
-      ? 'Bu basvuruyu onaylamak istediginize emin misiniz?'
-      : 'Bu basvuruyu reddetmek istediginize emin misiniz?';
-
-    if (!window.confirm(confirmationMessage)) {
-      return;
-    }
-
-    setReviewingRequestId(requestId);
-    setActionError(null);
-
-    try {
-      await api.patch(`/adoption-requests/${requestId}/status`, { status });
-      await Promise.all([fetchPost(), fetchOwnerRequests()]);
-    } catch (err) {
-      const message = err.response?.data?.message;
-      setActionError(Array.isArray(message) ? message.join(', ') : message || 'Basvuru durumu guncellenemedi.');
-    } finally {
-      setReviewingRequestId(null);
-    }
+  const confirmAction = (title, message, confirmText, onConfirm, isDanger = true) => {
+    toast((t) => (
+      <div className="flex flex-col gap-3 min-w-[200px]">
+        <div className="flex items-center gap-2 text-gray-800 font-bold text-sm">
+          <Shield className={`w-5 h-5 ${isDanger ? 'text-rose-500' : 'text-emerald-500'}`} />
+          {title}
+        </div>
+        <p className="text-xs text-gray-500">{message}</p>
+        <div className="flex gap-2 justify-end mt-1">
+          <button onClick={() => toast.dismiss(t.id)} className="px-3 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">İptal</button>
+          <button onClick={() => { toast.dismiss(t.id); onConfirm(); }} className={`px-3 py-1.5 text-xs font-semibold text-white rounded-lg transition shadow-sm ${isDanger ? 'bg-rose-500 hover:bg-rose-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}>{confirmText}</button>
+        </div>
+      </div>
+    ), { duration: 10000, position: 'top-center', style: { borderRadius: '16px', padding: '16px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)', border: `1px solid ${isDanger ? '#fee2e2' : '#d1fae5'}` } });
   };
 
-  const handlePostStatusUpdate = async (status) => {
-    const confirmationMessage = status === 'ADOPTED'
-      ? 'Ilani manuel olarak sahiplendirildi durumuna almak istediginize emin misiniz?'
-      : 'Ilani kapatmak istediginize emin misiniz?';
+  const handleReview = (requestId, status) => {
+    const isApprove = status === 'APPROVED';
+    const title = isApprove ? 'Başvuru Onaylansın Mı?' : 'Başvuru Reddedilsin Mi?';
+    const message = isApprove ? 'Bu kişiye hayvanı sahiplendirmeyi onaylıyorsunuz.' : 'Bu başvuruyu reddediyorsunuz.';
+    const confirmText = isApprove ? 'Onayla' : 'Reddet';
 
-    if (!window.confirm(confirmationMessage)) {
-      return;
-    }
+    confirmAction(title, message, confirmText, async () => {
+      setReviewingRequestId(requestId);
+      setActionError(null);
+      try {
+        await api.patch(`/adoption-requests/${requestId}/status`, { status });
+        await Promise.all([fetchPost(), fetchOwnerRequests()]);
+        showSuccess(isApprove ? 'Başvuru onaylandı.' : 'Başvuru reddedildi.');
+      } catch (err) {
+        const msg = err.response?.data?.message;
+        setActionError(Array.isArray(msg) ? msg.join(', ') : msg || 'Başvuru durumu güncellenemedi.');
+        showError('İşlem başarısız.');
+      } finally {
+        setReviewingRequestId(null);
+      }
+    }, !isApprove);
+  };
 
-    setUpdatingPostStatus(true);
-    setActionError(null);
+  const handlePostStatusUpdate = (status) => {
+    const isAdopted = status === 'ADOPTED';
+    const title = isAdopted ? 'Sahiplendirildi İşaretlensin Mi?' : 'İlan Kapatılsın Mı?';
+    const message = isAdopted ? 'İlan manuel olarak sahiplendirildi durumuna alınacaktır.' : 'İlan tamamen kapatılacaktır.';
+    const confirmText = isAdopted ? 'Sahiplendirildi' : 'Kapat';
 
-    try {
-      const response = await api.patch(`/pet-posts/${postId}/status`, { status });
-      setPost(response.data);
-    } catch (err) {
-      const message = err.response?.data?.message;
-      setActionError(Array.isArray(message) ? message.join(', ') : message || 'Ilan durumu guncellenemedi.');
-    } finally {
-      setUpdatingPostStatus(false);
-    }
+    confirmAction(title, message, confirmText, async () => {
+      setUpdatingPostStatus(true);
+      setActionError(null);
+      try {
+        const response = await api.patch(`/pet-posts/${postId}/status`, { status });
+        setPost(response.data);
+        showSuccess(isAdopted ? 'İlan sahiplendirildi olarak işaretlendi.' : 'İlan başarıyla kapatıldı.');
+      } catch (err) {
+        const msg = err.response?.data?.message;
+        setActionError(Array.isArray(msg) ? msg.join(', ') : msg || 'İlan durumu güncellenemedi.');
+        showError('İşlem başarısız.');
+      } finally {
+        setUpdatingPostStatus(false);
+      }
+    }, !isAdopted);
   };
 
   if (loadingPost) {
@@ -576,37 +594,51 @@ export default function PostDetails() {
                     />
 
                     <div className="grid gap-4 md:grid-cols-2">
-                      <input
+                      <select
+                        required
                         name="housingType"
                         value={formState.housingType}
                         onChange={handleFormChange}
-                        className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-orange-500"
-                        placeholder="Konut tipi"
-                      />
+                        className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500 bg-white"
+                      >
+                        <option value="" disabled>Konut tipi seçiniz</option>
+                        <option value="Apartman">Apartman</option>
+                        <option value="Müstakil">Müstakil</option>
+                        <option value="Bahçeli Ev">Bahçeli Ev</option>
+                        <option value="Site İçi">Site İçi</option>
+                        <option value="Diğer">Diğer</option>
+                      </select>
                       <input
+                        required
+                        type="tel"
                         name="contactPhone"
                         value={formState.contactPhone}
-                        onChange={handleFormChange}
-                        className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-orange-500"
-                        placeholder="Iletisim telefonu"
+                        onChange={(e) => {
+                          e.target.value = e.target.value.replace(/[^0-9+\s]/g, '');
+                          handleFormChange(e);
+                        }}
+                        className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+                        placeholder="İletişim telefonu (Sadece Rakam)"
                       />
                     </div>
 
                     <textarea
+                      required
                       name="experienceWithPets"
                       value={formState.experienceWithPets}
                       onChange={handleFormChange}
                       rows="3"
-                      className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-orange-500"
+                      className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
                       placeholder="Daha once hayvan bakimi deneyiminiz varsa yazin."
                     />
 
                     <textarea
+                      required
                       name="whyAdopt"
                       value={formState.whyAdopt}
                       onChange={handleFormChange}
                       rows="3"
-                      className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-orange-500"
+                      className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
                       placeholder="Bu dostu neden sahiplenmek istediginizi yazin."
                     />
 

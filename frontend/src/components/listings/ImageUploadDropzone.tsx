@@ -59,19 +59,19 @@ export function ImageUploadDropzone({ onFilesChange, maxFiles = 5 }: ImageUpload
 
   return (
     <div className="w-full">
-      <div
-        className={`relative flex flex-col items-center justify-center w-full rounded-2xl transition-all duration-300 ease-in-out cursor-pointer overflow-hidden
-          ${previews.length > 0 ? 'h-32' : 'h-44'}
-          ${dragActive
-            ? "border-2 border-orange-400 bg-orange-50 shadow-lg shadow-orange-500/10"
-            : "border-2 border-dashed border-gray-300 bg-gray-50/50 hover:bg-orange-50/50 hover:border-orange-300"
-          }
-        `}
-        onDragEnter={onDrag}
-        onDragLeave={onDrag}
-        onDragOver={onDrag}
-        onDrop={onDrop}
-      >
+      {previews.length === 0 && (
+        <div
+          className={`relative flex flex-col items-center justify-center w-full rounded-2xl transition-all duration-300 ease-in-out cursor-pointer overflow-hidden h-44
+            ${dragActive
+              ? "border-2 border-orange-400 bg-orange-50 shadow-lg shadow-orange-500/10"
+              : "border-2 border-dashed border-gray-300 bg-gray-50/50 hover:bg-orange-50/50 hover:border-orange-300"
+            }
+          `}
+          onDragEnter={onDrag}
+          onDragLeave={onDrag}
+          onDragOver={onDrag}
+          onDrop={onDrop}
+        >
         <input
           type="file"
           multiple
@@ -88,10 +88,11 @@ export function ImageUploadDropzone({ onFilesChange, maxFiles = 5 }: ImageUpload
           </p>
           <p className="mt-1 text-xs text-gray-400">PNG, JPG veya GIF • En fazla {maxFiles} görsel</p>
         </div>
-      </div>
+        </div>
+      )}
 
       {previews.length > 0 && (
-        <div className="mt-4">
+        <div className="">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
               Yüklenen Görseller ({previews.length}/{maxFiles})

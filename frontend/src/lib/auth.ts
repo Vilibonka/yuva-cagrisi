@@ -1,6 +1,7 @@
 const ACCESS_TOKEN_KEY = 'accessToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
 const AUTH_USER_KEY = 'authUser';
+const AUTH_USER_COOKIE_KEY = 'authUserPresent';
 
 function canUseStorage() {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -54,7 +55,10 @@ export function storeAuthSession({ accessToken, refreshToken, user }: AuthSessio
     document.cookie = `${ACCESS_TOKEN_KEY}=${accessToken}; path=/; max-age=604800; SameSite=Lax`;
   }
   if (refreshToken) window.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-  if (user) window.localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+  if (user) {
+    window.localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+    document.cookie = `${AUTH_USER_COOKIE_KEY}=1; path=/; max-age=604800; SameSite=Lax`;
+  }
 }
 
 export function clearAuthSession() {
@@ -63,4 +67,5 @@ export function clearAuthSession() {
   window.localStorage.removeItem(REFRESH_TOKEN_KEY);
   window.localStorage.removeItem(AUTH_USER_KEY);
   document.cookie = `${ACCESS_TOKEN_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  document.cookie = `${AUTH_USER_COOKIE_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }

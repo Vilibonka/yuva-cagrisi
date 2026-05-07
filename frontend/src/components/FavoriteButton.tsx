@@ -5,6 +5,7 @@ import { Heart } from 'lucide-react';
 import api from '@/api';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { showSuccess, showError, showInfo } from '@/utils/toast';
 
 interface FavoriteButtonProps {
   postId: string;
@@ -54,8 +55,14 @@ export default function FavoriteButton({ postId, initialIsFavorited = false }: F
     try {
       const { data } = await api.post(`/users/me/saved-posts/${postId}`);
       setIsFavorited(data.saved);
+      if (data.saved) {
+        showSuccess('İlan favorilere eklendi');
+      } else {
+        showInfo('İlan favorilerden çıkarıldı');
+      }
     } catch (err) {
       console.error('Favori işlemi başarısız:', err);
+      showError('Favori işlemi başarısız oldu');
     } finally {
       setLoading(false);
     }

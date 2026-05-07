@@ -16,6 +16,7 @@ export class UsersController {
     async updateProfile(@Req() req: any, @Body() body: any) {
         return this.usersService.updateProfile(req.user.id, {
             fullName: body.fullName,
+            email: body.email,
             contactPhone: body.contactPhone,
             city: body.city,
             district: body.district,

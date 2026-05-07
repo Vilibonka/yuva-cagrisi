@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import { ImageUploadDropzone } from "@/components/listings/ImageUploadDropzone";
 import {
   Loader2,
@@ -17,7 +18,8 @@ import {
   Syringe,
   Scissors,
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import { showSuccess, showError } from "@/utils/toast";
+import { Toaster } from "react-hot-toast";
 import api from "@/api";
 import { getApiErrorMessage } from "@/lib/errors";
 
@@ -47,6 +49,17 @@ export default function CreateListingPage() {
   const [images, setImages] = useState<File[]>([]);
   const [imageError, setImageError] = useState<string | null>(null);
   const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+  React.useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  if (authLoading || !isAuthenticated) {
+    return null;
+  }
 
   const {
     register,
@@ -121,20 +134,12 @@ export default function CreateListingPage() {
         },
       });
 
-      toast.success("İlan başarıyla oluşturuldu! 🎉", {
-        duration: 4000,
-        style: {
-          borderRadius: "12px",
-          background: "#065f46",
-          color: "#fff",
-          fontWeight: 600,
-        },
-      });
+      showSuccess("İlan başarıyla oluşturuldu! 🎉");
       reset();
       setImages([]);
       setTimeout(() => router.push("/posts"), 1500);
     } catch (error: unknown) {
-      toast.error(getApiErrorMessage(error, "İlan oluşturulurken bir hata oluştu."));
+      showError(getApiErrorMessage(error, "İlan oluşturulurken bir hata oluştu."));
     } finally {
       setIsLoading(false);
     }

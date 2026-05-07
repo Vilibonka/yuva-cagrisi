@@ -31,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAccessToken(storedToken);
       // Sync cookie so middleware can read it if they were logged in before this change
       document.cookie = `accessToken=${storedToken}; path=/; max-age=604800; SameSite=Lax`;
+      document.cookie = `authUserPresent=1; path=/; max-age=604800; SameSite=Lax`;
     }
     setIsLoading(false);
   }, []);

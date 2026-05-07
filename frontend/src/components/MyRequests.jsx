@@ -86,37 +86,54 @@ export default function MyRequests() {
             </h1>
             <p className="mt-1.5 text-sm text-gray-500">Sahiplenme başvurularınızın durumunu takip edin.</p>
           </div>
-          <Link
-            href="/posts"
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm shadow-orange-200/50 transition hover:from-orange-600 hover:to-orange-700"
-          >
-            <PawPrint className="w-4 h-4" /> İlanları Keşfet
-          </Link>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex gap-2 mt-5 flex-wrap">
-          {[
-            { key: 'ALL', label: 'Tümü' },
-            { key: 'PENDING', label: 'Bekleyen' },
-            { key: 'APPROVED', label: 'Onaylanan' },
-            { key: 'REJECTED', label: 'Reddedilen' },
-          ].map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setFilter(tab.key)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                filter === tab.key
-                  ? 'bg-orange-500 text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {tab.label}
-              <span className={`ml-1.5 text-xs ${filter === tab.key ? 'text-orange-100' : 'text-gray-400'}`}>
-                {counts[tab.key]}
-              </span>
-            </button>
-          ))}
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+          <button
+            onClick={() => setFilter('ALL')}
+            className={`rounded-xl border p-4 text-center transition ${
+              filter === 'ALL'
+                ? 'border-gray-300 bg-gray-100 ring-2 ring-gray-200'
+                : 'border-gray-100 bg-gray-50 hover:border-gray-200'
+            }`}
+          >
+            <span className="text-3xl font-extrabold text-gray-800">{counts.ALL}</span>
+            <span className="text-xs font-semibold text-gray-500 uppercase mt-1">Toplam Başvuru</span>
+          </button>
+          <button
+            onClick={() => setFilter('APPROVED')}
+            className={`rounded-xl border p-4 text-center transition ${
+              filter === 'APPROVED'
+                ? 'border-emerald-300 bg-emerald-100 ring-2 ring-emerald-200'
+                : 'border-emerald-100 bg-emerald-50 hover:border-emerald-200'
+            }`}
+          >
+            <span className="text-3xl font-extrabold text-emerald-600">{counts.APPROVED}</span>
+            <span className="text-xs font-semibold text-emerald-600 uppercase mt-1">Onaylanan</span>
+          </button>
+          <button
+            onClick={() => setFilter('PENDING')}
+            className={`rounded-xl border p-4 text-center transition ${
+              filter === 'PENDING'
+                ? 'border-amber-300 bg-amber-100 ring-2 ring-amber-200'
+                : 'border-amber-100 bg-amber-50 hover:border-amber-200'
+            }`}
+          >
+            <span className="text-3xl font-extrabold text-amber-600">{counts.PENDING}</span>
+            <span className="text-xs font-semibold text-amber-600 uppercase mt-1">Bekleyen</span>
+          </button>
+          <button
+            onClick={() => setFilter('REJECTED')}
+            className={`rounded-xl border p-4 text-center transition ${
+              filter === 'REJECTED'
+                ? 'border-rose-300 bg-rose-100 ring-2 ring-rose-200'
+                : 'border-rose-100 bg-rose-50 hover:border-rose-200'
+            }`}
+          >
+            <span className="text-3xl font-extrabold text-rose-600">{counts.REJECTED}</span>
+            <span className="text-xs font-semibold text-rose-600 uppercase mt-1">Reddedilen</span>
+          </button>
         </div>
       </div>
 
@@ -134,11 +151,6 @@ export default function MyRequests() {
           <p className="mt-2 text-sm text-gray-500">
             {filter === 'ALL' ? 'İlanları inceleyip size uygun dost için hemen başvuru yapın.' : 'Seçili filtreye uygun başvurunuz bulunmuyor.'}
           </p>
-          {filter === 'ALL' && (
-            <Link href="/posts" className="mt-6 inline-flex items-center gap-2 rounded-full bg-orange-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-700">
-              İlanlara Git <ArrowRight className="h-4 w-4" />
-            </Link>
-          )}
         </div>
       ) : (
         <div className="space-y-4">
