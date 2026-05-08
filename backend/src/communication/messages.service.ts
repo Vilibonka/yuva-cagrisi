@@ -1,13 +1,15 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { UserBlocksService } from '../user-blocks/user-blocks.service';
 import { MessageStatus } from '@prisma/client';
 
 @Injectable()
 export class MessagesService {
   constructor(
     private prisma: PrismaService,
-    private notificationsService: NotificationsService
+    private notificationsService: NotificationsService,
+    private userBlocksService: UserBlocksService,
   ) {}
 
   async createMessage(senderUserId: string, conversationId: string, content: string) {
@@ -24,6 +26,15 @@ export class MessagesService {
     const isParticipant = conversation.participants.some(p => p.userId === senderUserId);
     if (!isParticipant) {
       throw new ForbiddenException('Not a participant in this conversation');
+    }
+
+    // Check if any participant has blocked the sender
+    const otherParticipantIds = conversation.participants.filter(p => p.userId !== senderUserId).map(p => p.userId);
+    for (const otherId of otherParticipantIds) {
+      const blocked = await this.userBlocksService.isBlocked(senderUserId, otherId);
+      if (blocked) {
+        throw new ForbiddenException('Bu kullanıcıyla iletişim engellenmiştir.');
+      }
     }
 
     const message = await this.prisma.message.create({
@@ -139,6 +150,12 @@ export class MessagesService {
   async findOrCreateConversation(userId: string, targetUserId: string, postId?: string) {
     if (userId === targetUserId) {
       throw new ForbiddenException('You cannot start a conversation with yourself');
+    }
+
+    // Block check
+    const blocked = await this.userBlocksService.isBlocked(userId, targetUserId);
+    if (blocked) {
+      throw new ForbiddenException('Bu kullanıcıyla iletişim engellenmiştir.');
     }
 
     const whereClause: any = {

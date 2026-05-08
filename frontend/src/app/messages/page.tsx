@@ -230,7 +230,18 @@ export default function MessagesPage() {
               </div>
               <div className="flex-1 overflow-hidden relative">
                 <div className="absolute inset-0 p-4 md:p-6 flex flex-col">
-                  <Chat conversationId={activeConversationId} currentUserId={currentUser?.id} />
+                  {(() => {
+                    const activeConv = conversations.find((c: Conversation) => c.id === activeConversationId);
+                    const other = activeConv?.participants.find((p: Participant) => p.userId !== currentUser?.id)?.user;
+                    return (
+                      <Chat
+                        conversationId={activeConversationId}
+                        currentUserId={currentUser?.id || ''}
+                        otherUserId={other?.id}
+                        otherUserName={other?.fullName}
+                      />
+                    );
+                  })()}
                 </div>
               </div>
             </>

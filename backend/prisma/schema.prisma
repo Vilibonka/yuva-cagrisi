@@ -106,6 +106,8 @@ model User {
   notifications            Notification[]
   conversationParticipants ConversationParticipant[]
   sentMessages             Message[]                 @relation("MessageSender")
+  blockedUsers             UserBlock[]               @relation("BlockedByUser")
+  blockedByUsers           UserBlock[]               @relation("BlockedTargetUser")
 
   @@index([role])
   @@index([isActive])
@@ -346,4 +348,18 @@ model Message {
   @@index([senderUserId])
   @@index([status])
   @@index([createdAt])
+}
+
+model UserBlock {
+  id            String   @id @default(uuid())
+  blockerUserId String
+  blockedUserId String
+  reason        String?
+  createdAt     DateTime @default(now())
+  blocker       User     @relation("BlockedByUser", fields: [blockerUserId], references: [id], onDelete: Cascade)
+  blocked       User     @relation("BlockedTargetUser", fields: [blockedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerUserId, blockedUserId])
+  @@index([blockerUserId])
+  @@index([blockedUserId])
 }

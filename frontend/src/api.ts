@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getStoredAccessToken, getStoredRefreshToken, getStoredUser, storeAuthSession, clearAuthSession } from '@/lib/auth';
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export function buildMediaUrl(path?: string | null) {
   if (!path) return null;

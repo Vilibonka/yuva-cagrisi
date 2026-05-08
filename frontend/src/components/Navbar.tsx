@@ -290,6 +290,15 @@ export default function Navbar() {
                     <PlusSquare className="h-4 w-4" /> İlanlarım
                   </Link>
 
+                  {user?.role === 'ADMIN' && (
+                    <>
+                      <div className="my-1.5 border-t border-gray-100" />
+                      <Link href="/admin" className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold text-orange-600 hover:bg-orange-50 transition">
+                        <LayoutDashboard className="h-4 w-4" /> Yönetim Paneli
+                      </Link>
+                    </>
+                  )}
+
                   <div className="my-1.5 border-t border-gray-100" />
                   <button
                     onClick={logout}

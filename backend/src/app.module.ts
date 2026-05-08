@@ -9,6 +9,7 @@ import { ReportsModule } from "./reports/reports.module";
 import { AdminModule } from "./admin/admin.module";
 import { AdoptionRequestsModule } from "./adoption-requests/adoption-requests.module";
 import { NotificationsModule } from "./notifications/notifications.module";
+import { UserBlocksModule } from "./user-blocks/user-blocks.module";
 
 @Module({
   imports: [
@@ -21,6 +22,8 @@ import { NotificationsModule } from "./notifications/notifications.module";
     ReportsModule,
     AdminModule,
     NotificationsModule,
+    UserBlocksModule,
+
   ],
   controllers: [AppController],
 })
