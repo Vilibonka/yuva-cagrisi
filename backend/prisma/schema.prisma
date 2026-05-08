@@ -80,6 +80,13 @@ enum MessageStatus {
   DELETED
 }
 
+model City {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  users     User[]
+  petPosts  PetPost[]
+}
+
 model User {
   id                       String                    @id @default(uuid())
   fullName                 String
@@ -88,7 +95,7 @@ model User {
   passwordHash             String
   role                     UserRole                  @default(USER)
   profileImageUrl          String?
-  city                     String?
+  cityId                   String?
   district                 String?
   biography                String?
   isVerified               Boolean                   @default(false)
@@ -108,10 +115,11 @@ model User {
   sentMessages             Message[]                 @relation("MessageSender")
   blockedUsers             UserBlock[]               @relation("BlockedByUser")
   blockedByUsers           UserBlock[]               @relation("BlockedTargetUser")
+  city                     City?                     @relation(fields: [cityId], references: [id], onDelete: SetNull)
 
   @@index([role])
   @@index([isActive])
-  @@index([city, district])
+  @@index([cityId, district])
 }
 
 model RefreshToken {
@@ -161,7 +169,7 @@ model PetPost {
   postType         PostType
   title            String
   description      String
-  city             String
+  cityId           String
   district         String?
   addressNote      String?
   latitude         Decimal?          @db.Decimal(9, 6)
@@ -175,6 +183,7 @@ model PetPost {
   closedAt         DateTime?
   pet              Pet               @relation(fields: [petId], references: [id], onDelete: Cascade)
   owner            User              @relation("PostOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  city             City              @relation(fields: [cityId], references: [id], onDelete: Restrict)
   images           PostImage[]
   adoptionRequests AdoptionRequest[]
   savedBy          SavedPost[]
@@ -185,7 +194,7 @@ model PetPost {
   @@index([ownerUserId])
   @@index([postType])
   @@index([status])
-  @@index([city, district])
+  @@index([cityId, district])
   @@index([publishedAt])
   @@index([status, postType])
   @@index([isUrgent])

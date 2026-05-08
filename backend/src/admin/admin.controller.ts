@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, UseGuards, NotFoundException, Delete } from '@nestjs/common';
+import { Controller, Get, Patch, Param, UseGuards, NotFoundException, Delete, Query } from '@nestjs/common';
 import { AdminGuard } from './admin.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReportStatus } from '@prisma/client';
@@ -10,9 +10,25 @@ export class AdminController {
   constructor(private prisma: PrismaService) {}
 
   @Get('users')
-  async getAllUsers() {
+  async getAllUsers(@Query() query: any) {
+    const page = Math.max(1, parseInt(query.page || '1', 10));
+    const limit = Math.min(100, Math.max(1, parseInt(query.limit || '50', 10)));
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (query.q) {
+      where.OR = [
+        { fullName: { contains: query.q, mode: 'insensitive' } },
+        { email: { contains: query.q, mode: 'insensitive' } },
+      ];
+    }
+
     return this.prisma.user.findMany({
-      select: { id: true, fullName: true, email: true, isActive: true, role: true, createdAt: true }
+      where,
+      select: { id: true, fullName: true, email: true, isActive: true, role: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip,
     });
   }
 
@@ -29,8 +45,18 @@ export class AdminController {
   }
 
   @Get('reports')
-  async getAllReports() {
+  async getAllReports(@Query() query: any) {
+    const page = Math.max(1, parseInt(query.page || '1', 10));
+    const limit = Math.min(100, Math.max(1, parseInt(query.limit || '50', 10)));
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (query.status) {
+      where.status = query.status;
+    }
+
     return this.prisma.postReport.findMany({
+      where,
       include: {
         post: {
           select: { id: true, title: true, status: true }
@@ -39,7 +65,9 @@ export class AdminController {
           select: { id: true, fullName: true }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip,
     });
   }
 

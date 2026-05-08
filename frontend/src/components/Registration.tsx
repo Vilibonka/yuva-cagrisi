@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/api';
 import { getApiErrorMessage } from '@/lib/errors';
@@ -21,8 +21,13 @@ const Registration = () => {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState(1);
+  const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  useEffect(() => {
+    api.get('/cities').then(res => setCities(res.data)).catch(console.error);
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -192,7 +197,10 @@ const Registration = () => {
                       <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                         <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       </div>
-                      <input id="reg-city" name="city" type="text" className={inputClass} placeholder="İstanbul" value={formData.city} onChange={handleChange} />
+                      <select id="reg-city" name="city" className={`${inputClass} appearance-none bg-white`} value={formData.city} onChange={handleChange}>
+                        <option value="">Şehir Seçin</option>
+                        {cities.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                      </select>
                     </div>
                   </div>
                 </div>

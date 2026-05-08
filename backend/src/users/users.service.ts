@@ -19,18 +19,43 @@ export class UsersService {
     }
 
     async findById(id: string) {
-        return this.prisma.user.findUnique({
+        const user = await this.prisma.user.findUnique({
             where: { id },
             select: { id: true, fullName: true, email: true, contactPhone: true, city: true, district: true, biography: true, role: true, createdAt: true, isActive: true }
         });
+        if (!user) return null;
+        return {
+            ...user,
+            city: user.city?.name || null
+        };
     }
 
     async updateProfile(id: string, data: any) {
-        return this.prisma.user.update({
+        let cityId = undefined;
+        if (data.city) {
+            const cityRecord = await this.prisma.city.findFirst({
+                where: { name: { equals: data.city, mode: 'insensitive' } }
+            });
+            if (cityRecord) {
+                cityId = cityRecord.id;
+            }
+        }
+
+        const updatedData = { ...data };
+        delete updatedData.city;
+        if (cityId !== undefined) {
+            updatedData.cityId = cityId;
+        }
+
+        const user = await this.prisma.user.update({
             where: { id },
-            data,
+            data: updatedData,
             select: { id: true, fullName: true, email: true, contactPhone: true, city: true, district: true, biography: true }
         });
+        return {
+            ...user,
+            city: user.city?.name || null
+        };
     }
 
     async toggleSavedPost(userId: string, postId: string) {

@@ -16,6 +16,11 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    api.get('/cities').then(res => setCities(res.data)).catch(console.error);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -28,7 +33,7 @@ export default function SettingsPage() {
     }
   }, [user]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -91,13 +96,17 @@ export default function SettingsPage() {
 
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Şehir</label>
-            <input
+            <select
               name="city"
-              type="text"
-              className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 transition-all focus:border-orange-500 focus:outline-none focus:ring-orange-500"
+              className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 transition-all focus:border-orange-500 focus:outline-none focus:ring-orange-500 appearance-none bg-white"
               value={formData.city}
               onChange={handleChange}
-            />
+            >
+              <option value="">Şehir Seçin</option>
+              {cities.map(c => (
+                <option key={c.id} value={c.name}>{c.name}</option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-1">

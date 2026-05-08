@@ -24,11 +24,27 @@ export class AuthService {
         const hashedPassword = await bcrypt.hash(registerDto.password, salt);
 
         const { password, ...toSave } = registerDto;
+        
+        let cityId = undefined;
+        if (toSave.city) {
+            const cityRecord = await this.prisma.city.findFirst({
+                where: { name: { equals: toSave.city, mode: 'insensitive' } }
+            });
+            if (cityRecord) {
+                cityId = cityRecord.id;
+            }
+        }
 
-        const user = await this.usersService.createUser({
+        const createData: any = {
             ...toSave,
             passwordHash: hashedPassword,
-        });
+        };
+        delete createData.city;
+        if (cityId) {
+            createData.cityId = cityId;
+        }
+
+        const user = await this.usersService.createUser(createData);
 
         const tokens = await this.generateTokens(user.id, user.email, user.role);
         

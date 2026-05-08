@@ -47,11 +47,12 @@ export default function AdminDashboard() {
   }, [user, isLoading, router]);
 
   /* ── Data fetching ── */
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (query: string = '') => {
     setDataLoading(true);
     try {
+      const qParam = query ? `?q=${encodeURIComponent(query)}` : '';
       const [uRes, rRes] = await Promise.all([
-        api.get('/admin/users'),
+        api.get(`/admin/users${qParam}`),
         api.get('/admin/reports'),
       ]);
       setUsers(uRes.data);
@@ -64,8 +65,16 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    if (user?.role === 'ADMIN') fetchData();
+    if (user?.role === 'ADMIN') fetchData(searchQuery);
   }, [user, fetchData]);
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (user?.role === 'ADMIN') fetchData(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery, fetchData, user]);
 
   /* ── Actions ── */
   const toggleFreeze = async (userId: string) => {
@@ -100,11 +109,6 @@ export default function AdminDashboard() {
   const openReports = reports.filter((r) => r.status === 'OPEN').length;
   const activeUsers = users.filter((u) => u.isActive).length;
   const frozenUsers = users.filter((u) => !u.isActive).length;
-  const filteredUsers = users.filter(
-    (u) =>
-      u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -250,7 +254,7 @@ export default function AdminDashboard() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                          {filteredUsers.map((u) => (
+                          {users.map((u) => (
                             <tr key={u.id} className="hover:bg-orange-50/30 transition-colors">
                               <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
@@ -288,7 +292,7 @@ export default function AdminDashboard() {
                               </td>
                             </tr>
                           ))}
-                          {filteredUsers.length === 0 && (
+                          {users.length === 0 && (
                             <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-400 text-sm">Kullanıcı bulunamadı.</td></tr>
                           )}
                         </tbody>

@@ -4,6 +4,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CreatePetPostDto } from './dto/create-pet-post.dto';
 import { PostStatus, Prisma, RequestStatus } from '@prisma/client';
 
+
 @Injectable()
 export class PetPostsService {
   constructor(
@@ -27,6 +28,14 @@ export class PetPostsService {
         },
       });
 
+      let cityRecord = await tx.city.findFirst({
+        where: { name: { equals: createPetPostDto.city, mode: 'insensitive' } }
+      });
+
+      if (!cityRecord) {
+        throw new NotFoundException('Geçersiz şehir adı');
+      }
+
       const post = await tx.petPost.create({
         data: {
           petId: pet.id,
@@ -34,7 +43,7 @@ export class PetPostsService {
           postType: createPetPostDto.postType,
           title: createPetPostDto.title,
           description: createPetPostDto.description,
-          city: createPetPostDto.city,
+          cityId: cityRecord.id,
           status: PostStatus.ACTIVE,
           images: {
             create: imageUrls.map((img) => ({
@@ -46,38 +55,56 @@ export class PetPostsService {
         include: {
           images: true,
           pet: true,
+          city: true,
         },
       });
 
-      return post;
+      return {
+        ...post,
+        city: post.city?.name || 'Bilinmiyor'
+      };
     });
   }
 
   async findMyPosts(userId: string) {
-    return this.prisma.petPost.findMany({
+    const posts = await this.prisma.petPost.findMany({
       where: { ownerUserId: userId },
       include: {
         pet: true,
         images: true,
+        city: true,
         adoptionRequests: {
           select: { id: true, status: true, applicantUserId: true }
         }
       },
       orderBy: { createdAt: 'desc' }
     });
+    
+    return posts.map(post => ({
+      ...post,
+      city: post.city?.name || 'Bilinmiyor'
+    }));
   }
 
-  async findAllActive(filters: { species?: string; city?: string; size?: string; gender?: string }) {
+  async findAllActive(filters: { species?: string; city?: string; size?: string; gender?: string; q?: string; page?: string; limit?: string }) {
     const whereCondition: Prisma.PetPostWhereInput = {
       status: PostStatus.ACTIVE,
     };
 
     if (filters.city) {
-      whereCondition.city = { equals: filters.city, mode: 'insensitive' };
+      whereCondition.city = { name: { equals: filters.city, mode: 'insensitive' } };
+    }
+
+    if (filters.q) {
+      whereCondition.OR = [
+        { title: { contains: filters.q, mode: 'insensitive' } },
+        { description: { contains: filters.q, mode: 'insensitive' } },
+        { pet: { breed: { contains: filters.q, mode: 'insensitive' } } },
+      ];
     }
 
     if (filters.species || filters.size || filters.gender) {
-      whereCondition.pet = {};
+      whereCondition.pet = whereCondition.pet || {};
       if (filters.species) {
         whereCondition.pet.species = filters.species as any;
       }
@@ -89,17 +116,32 @@ export class PetPostsService {
       }
     }
 
-    return this.prisma.petPost.findMany({
+    const page = Math.max(1, parseInt(filters.page || '1', 10));
+    const limit = Math.min(100, Math.max(1, parseInt(filters.limit || '50', 10)));
+    const skip = (page - 1) * limit;
+
+    const posts = await this.prisma.petPost.findMany({
       where: whereCondition,
       include: {
         pet: true,
-        images: true,
+        images: {
+          where: { isPrimary: true }, // Optimization: Only load primary image to save bandwidth
+          take: 1
+        },
         owner: {
           select: { id: true, fullName: true, profileImageUrl: true }
-        }
+        },
+        city: true,
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip,
     });
+
+    return posts.map(post => ({
+      ...post,
+      city: post.city?.name || 'Bilinmiyor',
+    }));
   }
 
   async findOne(postId: string) {
@@ -108,6 +150,7 @@ export class PetPostsService {
       include: {
         pet: true,
         images: true,
+        city: true,
         owner: {
           select: { id: true, fullName: true, profileImageUrl: true, contactPhone: true, email: true },
         },
@@ -118,7 +161,10 @@ export class PetPostsService {
       throw new NotFoundException('Post not found');
     }
 
-    return post;
+    return {
+      ...post,
+      city: post.city?.name || 'Bilinmiyor'
+    };
   }
 
   async updateStatus(userId: string, postId: string, status: PostStatus) {
@@ -133,7 +179,7 @@ export class PetPostsService {
     const updatedPost = await this.prisma.petPost.update({
       where: { id: postId },
       data: { status, closedAt: (status === PostStatus.CLOSED || status === PostStatus.ADOPTED) ? new Date() : null },
-      include: { pet: true, images: true }
+      include: { pet: true, images: true, city: true }
     });
 
     // If post is closed or adopted, automatically reject any pending applications
@@ -171,6 +217,9 @@ export class PetPostsService {
       }
     }
 
-    return updatedPost;
+    return {
+      ...updatedPost,
+      city: updatedPost.city?.name || 'Bilinmiyor'
+    };
   }
 }

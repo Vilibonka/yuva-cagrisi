@@ -24,6 +24,11 @@ export default function CreatePost() {
   const [previewUrls, setPreviewUrls] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [cities, setCities] = useState([]);
+
+  React.useEffect(() => {
+    api.get('/cities').then(res => setCities(res.data)).catch(console.error);
+  }, []);
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;
@@ -128,14 +133,18 @@ export default function CreatePost() {
 
             <div>
               <label className="mb-2 block text-sm font-semibold text-gray-700">Sehir</label>
-              <input
+              <select
                 required
                 name="city"
                 value={formData.city}
                 onChange={handleInputChange}
-                className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:ring-2 focus:ring-orange-500"
-                placeholder="Orn: Istanbul"
-              />
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:ring-2 focus:ring-orange-500 appearance-none bg-white"
+              >
+                <option value="">Sehir Secin</option>
+                {cities.map(c => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
             </div>
 
             <div className="col-span-2">

@@ -72,11 +72,18 @@ export default function PostsGallery() {
   const [loading, setLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState({
+    q: '',
     species: '',
     city: '',
     size: '',
     gender: '',
   });
+  const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    // Fetch valid cities
+    api.get('/cities').then(res => setCities(res.data)).catch(console.error);
+  }, []);
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -95,7 +102,12 @@ export default function PostsGallery() {
         setLoading(false);
       }
     };
-    fetchPosts();
+
+    const timerId = setTimeout(() => {
+      fetchPosts();
+    }, 400); // 400ms debounce
+
+    return () => clearTimeout(timerId);
   }, [filters]);
 
   const handleFilterChange = (event: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
@@ -141,7 +153,7 @@ export default function PostsGallery() {
             </button>
             {activeFilterCount > 0 && (
               <button
-                onClick={() => setFilters({ species: '', city: '', size: '', gender: '' })}
+                onClick={() => setFilters({ q: '', species: '', city: '', size: '', gender: '' })}
                 className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-gray-500 transition hover:bg-gray-100 hover:text-red-500"
               >
                 <X className="h-3.5 w-3.5" /> Temizle
@@ -177,17 +189,35 @@ export default function PostsGallery() {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Şehir</label>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Kelime Arama</label>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                name="city"
-                placeholder="Şehir adı..."
-                value={filters.city}
+                name="q"
+                placeholder="İlan, tür, vb..."
+                value={filters.q || ''}
                 onChange={handleFilterChange}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-3 text-sm font-medium text-gray-700 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20"
               />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Şehir</label>
+            <div className="relative">
+              <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <select
+                name="city"
+                value={filters.city}
+                onChange={handleFilterChange}
+                className="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-10 text-sm font-medium text-gray-700 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20"
+              >
+                <option value="">Tümü</option>
+                {cities.map(c => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -251,7 +281,7 @@ export default function PostsGallery() {
           </p>
           {activeFilterCount > 0 && (
             <button
-              onClick={() => setFilters({ species: '', city: '', size: '', gender: '' })}
+              onClick={() => setFilters({ q: '', species: '', city: '', size: '', gender: '' })}
               className="mt-6 rounded-xl bg-orange-500 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-orange-500/25 transition hover:bg-orange-600"
             >
               Filtreleri Temizle
