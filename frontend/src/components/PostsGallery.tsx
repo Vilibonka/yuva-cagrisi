@@ -70,6 +70,10 @@ function timeAgo(dateStr: string): string {
 export default function PostsGallery() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState({
     q: '',
@@ -80,35 +84,80 @@ export default function PostsGallery() {
   });
   const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
 
+  // Use a ref to track the "Load More" element
+  const loaderRef = React.useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
-    // Fetch valid cities
     api.get('/cities').then(res => setCities(res.data)).catch(console.error);
   }, []);
 
-  useEffect(() => {
-    const fetchPosts = async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        Object.entries(filters).forEach(([key, value]) => {
-          if (value) params.append(key, value);
-        });
+  const fetchPosts = async (currentPage: number, append = false) => {
+    if (currentPage === 1) setLoading(true);
+    else setLoadingMore(true);
 
-        const response = await api.get(`/pet-posts?${params.toString()}`);
-        setPosts(response.data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
+    try {
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) params.append(key, value);
+      });
+      params.append('page', currentPage.toString());
+      params.append('limit', '12'); // Load 12 items at a time
+
+      const response = await api.get(`/pet-posts?${params.toString()}`);
+      const newData = response.data.data;
+      const meta = response.data.meta;
+
+      if (append) {
+        setPosts((prev) => [...prev, ...newData]);
+      } else {
+        setPosts(newData);
       }
-    };
+      setHasNextPage(meta.hasNextPage);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
 
+  // When filters change, reset to page 1
+  useEffect(() => {
+    setPage(1);
     const timerId = setTimeout(() => {
-      fetchPosts();
-    }, 400); // 400ms debounce
+      fetchPosts(1, false);
+    }, 400); // debounce
 
     return () => clearTimeout(timerId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
+
+  // When page changes (except 1), append data
+  useEffect(() => {
+    if (page > 1) {
+      fetchPosts(page, true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
+  // Intersection Observer for Infinite Scrolling
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target.isIntersecting && hasNextPage && !loading && !loadingMore) {
+          setPage((prev) => prev + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loaderRef.current) {
+      observer.observe(loaderRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasNextPage, loading, loadingMore]);
 
   const handleFilterChange = (event: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
     setFilters((prev) => ({ ...prev, [event.target.name]: event.target.value }));
@@ -385,6 +434,24 @@ export default function PostsGallery() {
           })}
         </div>
       )}
+
+      {/* Infinite Scroll / Load More Indicator */}
+      <div 
+        ref={loaderRef} 
+        className="mt-10 py-8 flex justify-center items-center"
+      >
+        {loadingMore && (
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-orange-500 border-t-transparent shadow-lg"></div>
+            <p className="text-sm font-medium text-gray-500 animate-pulse">Daha fazla ilan yükleniyor...</p>
+          </div>
+        )}
+        {!hasNextPage && posts.length > 0 && !loading && (
+          <div className="text-center py-4 px-6 rounded-2xl bg-gray-50 border border-gray-100 text-gray-400 text-sm font-medium">
+            ✨ Tüm ilanlar bu kadar. Aradığını bulamadın mı? Filtreleri değiştirmeyi dene!
+          </div>
+        )}
+      </div>
     </div>
   );
 }

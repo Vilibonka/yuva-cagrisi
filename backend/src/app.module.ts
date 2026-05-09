@@ -13,6 +13,7 @@ import { AdoptionRequestsModule } from "./adoption-requests/adoption-requests.mo
 import { NotificationsModule } from "./notifications/notifications.module";
 import { UserBlocksModule } from "./user-blocks/user-blocks.module";
 import { CitiesModule } from './cities/cities.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { CitiesModule } from './cities/cities.module';
     NotificationsModule,
     UserBlocksModule,
     CitiesModule,
+    MailModule,
 
   ],
   controllers: [AppController],

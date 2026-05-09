@@ -120,28 +120,42 @@ export class PetPostsService {
     const limit = Math.min(100, Math.max(1, parseInt(filters.limit || '50', 10)));
     const skip = (page - 1) * limit;
 
-    const posts = await this.prisma.petPost.findMany({
-      where: whereCondition,
-      include: {
-        pet: true,
-        images: {
-          where: { isPrimary: true }, // Optimization: Only load primary image to save bandwidth
-          take: 1
+    const [posts, total] = await Promise.all([
+      this.prisma.petPost.findMany({
+        where: whereCondition,
+        include: {
+          pet: true,
+          images: {
+            where: { isPrimary: true },
+            take: 1
+          },
+          owner: {
+            select: { id: true, fullName: true, profileImageUrl: true }
+          },
+          city: true,
         },
-        owner: {
-          select: { id: true, fullName: true, profileImageUrl: true }
-        },
-        city: true,
-      },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      skip,
-    });
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip,
+      }),
+      this.prisma.petPost.count({ where: whereCondition })
+    ]);
 
-    return posts.map(post => ({
+    const data = posts.map(post => ({
       ...post,
       city: post.city?.name || 'Bilinmiyor',
     }));
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: skip + posts.length < total
+      }
+    };
   }
 
   async findOne(postId: string) {

@@ -5,6 +5,8 @@ import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -12,6 +14,7 @@ export class AuthService {
         private usersService: UsersService,
         private jwtService: JwtService,
         private prisma: PrismaService,
+        private mailService: MailService,
     ) { }
 
     async register(registerDto: RegisterDto) {
@@ -128,5 +131,89 @@ export class AuthService {
             access_token: accessToken,
             refreshToken,
         };
+    }
+
+    async forgotPassword(email: string) {
+        const user = await this.usersService.findByEmail(email);
+        if (!user) {
+            // We shouldn't reveal if a user exists or not for security reasons, so we return success either way.
+            return { message: 'If your email is registered, a password reset link has been sent.' };
+        }
+
+        // Invalidate old tokens for this user
+        await this.prisma.passwordResetToken.deleteMany({
+            where: { userId: user.id }
+        });
+
+        // Generate a cryptographically secure random token
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        
+        // Hash it before saving to DB
+        const salt = await bcrypt.genSalt();
+        const hashedToken = await bcrypt.hash(resetToken, salt);
+
+        await this.prisma.passwordResetToken.create({
+            data: {
+                userId: user.id,
+                token: hashedToken,
+                expiresAt: new Date(Date.now() + 1000 * 60 * 60) // 1 hour
+            }
+        });
+
+        // Send email with the unhashed token
+        const previewUrl = await this.mailService.sendPasswordResetEmail(user.email, resetToken);
+
+        return { 
+            message: 'If your email is registered, a password reset link has been sent.',
+            previewUrl
+        };
+    }
+
+    async resetPassword(token: string, newPassword: string) {
+        // Find all valid tokens (not expired)
+        const activeTokens = await this.prisma.passwordResetToken.findMany({
+            where: { expiresAt: { gt: new Date() } }
+        });
+
+        // Find the matching token
+        let matchedToken = null;
+        for (const record of activeTokens) {
+            if (await bcrypt.compare(token, record.token)) {
+                matchedToken = record;
+                break;
+            }
+        }
+
+        if (!matchedToken) {
+            throw new UnauthorizedException('Invalid or expired password reset token.');
+        }
+
+        const user = await this.usersService.findById(matchedToken.userId);
+        if (!user) {
+            throw new UnauthorizedException('User not found.');
+        }
+
+        // Hash new password
+        const salt = await bcrypt.genSalt();
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        // Update user
+        await this.prisma.user.update({
+            where: { id: user.id },
+            data: { passwordHash: hashedPassword }
+        });
+
+        // Delete the used token
+        await this.prisma.passwordResetToken.deleteMany({
+            where: { userId: user.id }
+        });
+
+        // Optional: Revoke all existing refresh tokens so user has to log in again everywhere
+        await this.prisma.refreshToken.updateMany({
+            where: { userId: user.id, revokedAt: null },
+            data: { revokedAt: new Date() }
+        });
+
+        return { message: 'Password has been successfully reset.' };
     }
 }

@@ -103,6 +103,7 @@ model User {
   createdAt                DateTime                  @default(now())
   updatedAt                DateTime                  @updatedAt
   refreshTokens            RefreshToken[]
+  passwordResetTokens      PasswordResetToken[]
   createdPets              Pet[]                     @relation("PetCreatedBy")
   posts                    PetPost[]                 @relation("PostOwner")
   adoptionRequests         AdoptionRequest[]         @relation("RequestApplicant")
@@ -133,6 +134,18 @@ model RefreshToken {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
 }
 
 model Pet {

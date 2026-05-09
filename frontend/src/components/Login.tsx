@@ -150,9 +150,9 @@ const Login = () => {
                 <label htmlFor="login-password" className="block text-sm font-semibold text-gray-700">
                   Şifre
                 </label>
-                <a href="#" className="text-xs font-semibold text-orange-500 hover:text-orange-600 transition-colors">
+                <Link href="/forgot-password" className="text-xs font-semibold text-orange-500 hover:text-orange-600 transition-colors">
                   Şifremi Unuttum
-                </a>
+                </Link>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
