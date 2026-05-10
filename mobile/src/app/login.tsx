@@ -81,6 +81,7 @@ export default function LoginScreen() {
               />
             )}
           />
+          <Button title="Şifremi Unuttum" variant="ghost" onPress={() => router.push('/forgot-password' as Href)} />
           <Button title="Giriş Yap" loading={isSubmitting} onPress={submit} />
           <Button
             title="Hesabım yok, kayıt olayım"

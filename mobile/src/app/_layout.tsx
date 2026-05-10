@@ -27,6 +27,8 @@ export default function RootLayout() {
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="login" options={{ title: 'Giriş' }} />
               <Stack.Screen name="register" options={{ title: 'Kayıt Ol' }} />
+              <Stack.Screen name="forgot-password" options={{ title: 'Şifremi Unuttum' }} />
+              <Stack.Screen name="reset-password" options={{ title: 'Şifre Sıfırla' }} />
               <Stack.Screen name="requests" options={{ title: 'Başvurularım' }} />
               <Stack.Screen name="my-listings" options={{ title: 'İlanlarım' }} />
               <Stack.Screen name="profile-settings" options={{ title: 'Profil Ayarları' }} />
