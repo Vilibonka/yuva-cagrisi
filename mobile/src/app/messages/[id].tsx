@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { Send } from 'lucide-react-native';
+import { Ban, Send, ShieldCheck } from 'lucide-react-native';
 
 import { ErrorState, LoadingState, colors } from '@/components/Design';
 import { useAuth } from '@/context/AuthContext';
@@ -9,23 +9,52 @@ import { useSocket } from '@/hooks/useSocket';
 import api from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/errors';
 import { formatTime } from '@/lib/labels';
-import { Message } from '@/types';
+import { BlockStatus, Conversation, Message, User } from '@/types';
+
+const defaultBlockStatus: BlockStatus = {
+  isBlocked: false,
+  blockedByMe: false,
+  blockedByThem: false,
+};
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const { socket, isConnected } = useSocket(!!id);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [otherUser, setOtherUser] = useState<User | null>(null);
+  const [blockStatus, setBlockStatus] = useState<BlockStatus>(defaultBlockStatus);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const listRef = useRef<FlatList<Message>>(null);
 
+  const loadBlockStatus = useCallback(async (targetUserId: string) => {
+    const { data } = await api.get<BlockStatus>(`/user-blocks/check/${targetUserId}`);
+    setBlockStatus(data);
+  }, []);
+
   const load = useCallback(async () => {
     if (!id) return;
-    const { data } = await api.get<Message[]>(`/conversations/${id}/messages`);
-    setMessages(data);
-  }, [id]);
+
+    const [{ data: nextMessages }, { data: conversations }] = await Promise.all([
+      api.get<Message[]>(`/conversations/${id}/messages`),
+      api.get<Conversation[]>('/conversations'),
+    ]);
+
+    const conversation = conversations.find((item) => item.id === id);
+    const nextOtherUser = conversation?.participants?.find((participant) => participant.userId !== user?.id)?.user || null;
+
+    setMessages(nextMessages);
+    setOtherUser(nextOtherUser || null);
+
+    if (nextOtherUser?.id) {
+      await loadBlockStatus(nextOtherUser.id);
+    } else {
+      setBlockStatus(defaultBlockStatus);
+    }
+  }, [id, loadBlockStatus, user?.id]);
 
   const loadScreen = useCallback(
     async ({ withLoading = false }: { withLoading?: boolean } = {}) => {
@@ -59,11 +88,18 @@ export default function ChatScreen() {
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
     };
 
+    const onException = (error: { message?: string }) => {
+      Alert.alert('Mesaj gönderilemedi', error?.message || 'Lütfen tekrar dene.');
+      if (otherUser?.id) void loadBlockStatus(otherUser.id);
+    };
+
     socket.on('newMessage', onMessage);
+    socket.on('exception', onException);
     return () => {
       socket.off('newMessage', onMessage);
+      socket.off('exception', onException);
     };
-  }, [id, socket]);
+  }, [id, loadBlockStatus, otherUser?.id, socket]);
 
   const confirmDeleteMessage = (messageId: string) => {
     Alert.alert('Mesajı sil', 'Bu mesajı silmek istiyor musun?', [
@@ -85,7 +121,45 @@ export default function ChatScreen() {
     }
   };
 
+  const confirmBlockUser = () => {
+    if (!otherUser?.id) return;
+    Alert.alert('Kullanıcıyı engelle', `${otherUser.fullName} sana mesaj gönderemeyecek.`, [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Engelle', style: 'destructive', onPress: () => void blockUser() },
+    ]);
+  };
+
+  const blockUser = async () => {
+    if (!otherUser?.id) return;
+    setActionLoading(true);
+    try {
+      await api.post(`/user-blocks/${otherUser.id}`, {});
+      setBlockStatus({ isBlocked: true, blockedByMe: true, blockedByThem: false });
+    } catch (error) {
+      Alert.alert('Engelleme başarısız', getApiErrorMessage(error, 'Lütfen tekrar dene.'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const unblockUser = async () => {
+    if (!otherUser?.id) return;
+    setActionLoading(true);
+    try {
+      await api.delete(`/user-blocks/${otherUser.id}`);
+      setBlockStatus(defaultBlockStatus);
+    } catch (error) {
+      Alert.alert('Engel kaldırılamadı', getApiErrorMessage(error, 'Lütfen tekrar dene.'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const sendMessage = () => {
+    if (blockStatus.isBlocked) {
+      Alert.alert('Mesaj gönderilemedi', getBlockedMessage(blockStatus));
+      return;
+    }
     if (!socket || !isConnected || !id || !inputValue.trim()) return;
     socket.emit('sendMessage', {
       conversationId: id,
@@ -100,13 +174,36 @@ export default function ChatScreen() {
     return <ErrorState title="Sohbet açılamadı" description={loadError} onRetry={() => loadScreen({ withLoading: true })} />;
   }
 
-  const canSend = !!socket && isConnected && !!id && !!inputValue.trim();
+  const canSend = !!socket && isConnected && !!id && !!inputValue.trim() && !blockStatus.isBlocked;
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
       <View style={styles.status}>
-        <Text style={[styles.statusText, isConnected && styles.statusOnline]}>{isConnected ? 'Canlı bağlantı açık' : 'Bağlantı bekleniyor'}</Text>
+        <View style={styles.statusTextWrap}>
+          <Text style={[styles.statusText, isConnected && styles.statusOnline]}>{isConnected ? 'Canlı bağlantı açık' : 'Bağlantı bekleniyor'}</Text>
+          {otherUser ? <Text style={styles.otherName}>{otherUser.fullName}</Text> : null}
+        </View>
+        {otherUser ? (
+          blockStatus.blockedByMe ? (
+            <Pressable style={styles.headerAction} disabled={actionLoading} onPress={unblockUser}>
+              <ShieldCheck color={colors.success} size={16} />
+              <Text style={styles.headerActionText}>Engeli Kaldır</Text>
+            </Pressable>
+          ) : !blockStatus.blockedByThem ? (
+            <Pressable style={styles.headerAction} disabled={actionLoading} onPress={confirmBlockUser}>
+              <Ban color={colors.danger} size={16} />
+              <Text style={styles.headerActionText}>Engelle</Text>
+            </Pressable>
+          ) : null
+        ) : null}
       </View>
+
+      {blockStatus.isBlocked ? (
+        <View style={styles.blockBanner}>
+          <Ban color={colors.danger} size={18} />
+          <Text style={styles.blockText}>{getBlockedMessage(blockStatus)}</Text>
+        </View>
+      ) : null}
 
       <FlatList
         ref={listRef}
@@ -139,9 +236,10 @@ export default function ChatScreen() {
         <TextInput
           value={inputValue}
           onChangeText={setInputValue}
-          placeholder={isConnected ? 'Mesaj yaz...' : 'Bağlantı bekleniyor...'}
+          placeholder={blockStatus.isBlocked ? 'Bu sohbet engellendi' : isConnected ? 'Mesaj yaz...' : 'Bağlantı bekleniyor...'}
           placeholderTextColor="#a79d94"
           style={styles.input}
+          editable={!blockStatus.isBlocked}
           multiline
         />
         <Pressable style={[styles.sendButton, !canSend && styles.sendButtonDisabled]} onPress={sendMessage} disabled={!canSend}>
@@ -152,11 +250,54 @@ export default function ChatScreen() {
   );
 }
 
+function getBlockedMessage(blockStatus: BlockStatus) {
+  if (blockStatus.blockedByMe) {
+    return 'Bu kullanıcıyı engelledin. Mesaj göndermek için engeli kaldır.';
+  }
+  if (blockStatus.blockedByThem) {
+    return 'Bu kullanıcı tarafından engellendin. Bu sohbette mesaj gönderemezsin.';
+  }
+  return 'Bu kullanıcıyla iletişim engellenmiştir.';
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  status: { alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8 },
+  status: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  statusTextWrap: { flex: 1 },
   statusText: { color: colors.muted, fontSize: 12, fontWeight: '800' },
   statusOnline: { color: colors.success },
+  otherName: { color: colors.ink, fontSize: 15, fontWeight: '900', marginTop: 2 },
+  headerAction: {
+    alignItems: 'center',
+    backgroundColor: '#fff4ed',
+    borderColor: '#ffd2b8',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  headerActionText: { color: colors.primaryDark, fontSize: 12, fontWeight: '900' },
+  blockBanner: {
+    alignItems: 'center',
+    backgroundColor: '#fee2e2',
+    borderColor: '#fecaca',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    padding: 12,
+    borderRadius: 14,
+  },
+  blockText: { color: colors.danger, flex: 1, fontSize: 13, fontWeight: '800', lineHeight: 18 },
   list: { gap: 10, padding: 16, paddingBottom: 24 },
   messageRow: { maxWidth: '82%' },
   mineRow: { alignSelf: 'flex-end', alignItems: 'flex-end' },
