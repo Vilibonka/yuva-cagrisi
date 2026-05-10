@@ -5,6 +5,7 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, Vi
 import { router } from 'expo-router';
 import { z } from 'zod';
 
+import { CitySelect } from '@/components/CitySelect';
 import { Button, Field, LoadingState, Section, colors } from '@/components/Design';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
@@ -138,9 +139,7 @@ export default function ProfileSettingsScreen() {
           <Controller
             control={control}
             name="city"
-            render={({ field: { onBlur, onChange, value } }) => (
-              <Field label="Şehir" value={value} onBlur={onBlur} onChangeText={onChange} error={errors.city?.message} />
-            )}
+            render={({ field: { onChange, value } }) => <CitySelect label="Şehir" value={value} onChange={onChange} placeholder="Şehir seç" error={errors.city?.message} />}
           />
           <Controller
             control={control}

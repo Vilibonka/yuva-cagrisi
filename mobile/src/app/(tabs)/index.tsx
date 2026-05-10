@@ -1,15 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { LogIn, MessageSquare, Plus, Search, User } from 'lucide-react-native';
+import { LogIn, MessageSquare, Plus, User } from 'lucide-react-native';
 
+import { CitySelect } from '@/components/CitySelect';
 import { Button, EmptyState, ErrorState, LoadingState, colors } from '@/components/Design';
 import { PostCard } from '@/components/PostCard';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/errors';
 import { speciesLabels } from '@/lib/labels';
-import { PetPost, SavedPost, Species } from '@/types';
+import { PaginatedResponse, PetPost, SavedPost, Species } from '@/types';
+
+const PAGE_SIZE = 12;
 
 const speciesOptions: { value: Species | ''; label: string }[] = [
   { value: '', label: 'Tümü' },
@@ -25,8 +28,11 @@ export default function HomeScreen() {
   const [posts, setPosts] = useState<PetPost[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
   const [city, setCity] = useState('');
   const [species, setSpecies] = useState<Species | ''>('');
 
@@ -37,10 +43,22 @@ export default function HomeScreen() {
     return params.toString();
   }, [city, species]);
 
-  const loadPosts = useCallback(async () => {
-    const { data } = await api.get<PetPost[]>(`/pet-posts${query ? `?${query}` : ''}`);
-    setPosts(data);
-  }, [query]);
+  const loadPosts = useCallback(
+    async (nextPage = 1, append = false) => {
+      const params = new URLSearchParams(query);
+      params.set('page', String(nextPage));
+      params.set('limit', String(PAGE_SIZE));
+
+      const { data } = await api.get<PetPost[] | PaginatedResponse<PetPost>>(`/pet-posts?${params.toString()}`);
+      const nextPosts = Array.isArray(data) ? data : data.data;
+      const nextMeta = Array.isArray(data) ? null : data.meta;
+
+      setPosts((current) => (append ? mergePosts(current, nextPosts) : nextPosts));
+      setPage(nextMeta?.page || nextPage);
+      setHasNextPage(nextMeta?.hasNextPage || false);
+    },
+    [query],
+  );
 
   const loadFavorites = useCallback(async () => {
     if (!isAuthenticated) {
@@ -57,7 +75,7 @@ export default function HomeScreen() {
       if (withLoading) setLoading(true);
       setLoadError(null);
       try {
-        await Promise.all([loadPosts(), loadFavorites()]);
+        await Promise.all([loadPosts(1, false), loadFavorites()]);
       } catch (error) {
         setLoadError(getApiErrorMessage(error, 'İlanlar yüklenemedi. Lütfen tekrar dene.'));
       } finally {
@@ -75,6 +93,19 @@ export default function HomeScreen() {
     setRefreshing(true);
     await loadScreen();
     setRefreshing(false);
+  };
+
+  const loadMore = async () => {
+    if (loading || loadingMore || refreshing || !hasNextPage) return;
+
+    setLoadingMore(true);
+    try {
+      await loadPosts(page + 1, true);
+    } catch (error) {
+      Alert.alert('İlanlar yüklenemedi', getApiErrorMessage(error, 'Daha fazla ilan yüklenemedi. Lütfen tekrar dene.'));
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   const toggleFavorite = async (postId: string) => {
@@ -133,17 +164,7 @@ export default function HomeScreen() {
 
           {isAuthenticated ? <Text style={styles.welcome}>Merhaba, {user?.fullName?.split(' ')[0]}</Text> : null}
 
-          <View style={styles.searchBox}>
-            <Search color={colors.muted} size={18} />
-            <TextInput
-              placeholder="Şehre göre ara"
-              placeholderTextColor="#a79d94"
-              value={city}
-              onChangeText={setCity}
-              style={styles.searchInput}
-              returnKeyType="search"
-            />
-          </View>
+          <CitySelect label="Şehir" value={city} onChange={setCity} allowEmpty emptyLabel="Tüm şehirler" placeholder="Şehre göre filtrele" />
 
           <FlatList
             horizontal
@@ -163,6 +184,9 @@ export default function HomeScreen() {
         </View>
       }
       ListEmptyComponent={<EmptyState title="İlan bulunamadı" description="Filtreleri değiştirerek tekrar deneyebilirsin." />}
+      ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.primary} style={styles.footerLoader} /> : null}
+      onEndReached={loadMore}
+      onEndReachedThreshold={0.35}
       renderItem={({ item }) => (
         <PostCard
           post={item}
@@ -173,6 +197,11 @@ export default function HomeScreen() {
       )}
     />
   );
+}
+
+function mergePosts(current: PetPost[], nextPosts: PetPost[]) {
+  const seen = new Set(current.map((post) => post.id));
+  return [...current, ...nextPosts.filter((post) => !seen.has(post.id))];
 }
 
 const styles = StyleSheet.create({
@@ -193,18 +222,6 @@ const styles = StyleSheet.create({
     width: 48,
   },
   welcome: { color: colors.muted, fontSize: 13, fontWeight: '800' },
-  searchBox: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.line,
-    borderRadius: 16,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 10,
-    minHeight: 50,
-    paddingHorizontal: 14,
-  },
-  searchInput: { color: colors.ink, flex: 1, fontSize: 15 },
   filters: { gap: 8, paddingRight: 16 },
   filterChip: {
     backgroundColor: colors.surface,
@@ -217,4 +234,5 @@ const styles = StyleSheet.create({
   filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   filterText: { color: colors.muted, fontWeight: '800' },
   filterTextActive: { color: '#fff' },
+  footerLoader: { paddingVertical: 20 },
 });

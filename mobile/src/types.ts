@@ -8,6 +8,37 @@ export type MessageStatus = 'SENT' | 'READ' | 'DELETED';
 export type ReportReason = 'SPAM' | 'INAPPROPRIATE' | 'SCAM' | 'OTHER';
 export type NotificationType = 'REQUEST_CREATED' | 'REQUEST_APPROVED' | 'REQUEST_REJECTED' | 'NEW_MESSAGE' | 'SYSTEM';
 
+export interface CityItem {
+  id: string;
+  name: string;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+  };
+}
+
+export interface BlockStatus {
+  isBlocked: boolean;
+  blockedByMe: boolean;
+  blockedByThem: boolean;
+}
+
+export interface UserBlock {
+  id: string;
+  blockerUserId: string;
+  blockedUserId: string;
+  reason?: string | null;
+  createdAt: string;
+  blocked?: Pick<User, 'id' | 'fullName' | 'email' | 'profileImageUrl'>;
+}
+
 export interface User {
   id: string;
   fullName: string;
