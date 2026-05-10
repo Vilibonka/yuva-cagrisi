@@ -1,8 +1,8 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getStoredUser } from '@/lib/auth';
-import api from '@/api';
+import api, { buildMediaUrl } from '@/api';
 import Chat from '@/components/Chat';
 import { MessageSquare, ChevronRight, Search, Loader2, Inbox } from 'lucide-react';
 
@@ -33,6 +33,9 @@ interface Conversation {
 
 export default function MessagesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const convIdParam = searchParams.get('conversationId');
+
   const [currentUser, setCurrentUser] = useState<ConversationUser | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -60,6 +63,13 @@ export default function MessagesPage() {
 
     fetchConversations();
   }, [router]);
+
+  // Handle URL param for conversation selection
+  useEffect(() => {
+    if (convIdParam && conversations.length > 0) {
+      setActiveConversationId(convIdParam);
+    }
+  }, [convIdParam, conversations]);
 
   const handleSelectConversation = async (convId: string) => {
     setActiveConversationId(convId);
@@ -167,10 +177,18 @@ export default function MessagesPage() {
                       }`}
                     >
                       {/* Avatar */}
-                      <div className={`relative flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold ${
+                      <div className={`relative flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center overflow-hidden text-sm font-bold ${
                         isActive ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-600'
                       }`}>
-                        {getInitials(otherParticipant?.fullName)}
+                        {otherParticipant?.profileImageUrl ? (
+                          <img 
+                            src={buildMediaUrl(otherParticipant.profileImageUrl) || undefined} 
+                            className="w-full h-full object-cover"
+                            alt="avatar"
+                          />
+                        ) : (
+                          getInitials(otherParticipant?.fullName)
+                        )}
                         {isUnread && !isActive && (
                           <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-orange-500 rounded-full ring-2 ring-white" />
                         )}
@@ -239,6 +257,7 @@ export default function MessagesPage() {
                         currentUserId={currentUser?.id || ''}
                         otherUserId={other?.id}
                         otherUserName={other?.fullName}
+                        otherUserProfileImage={other?.profileImageUrl}
                       />
                     );
                   })()}

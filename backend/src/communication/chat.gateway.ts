@@ -10,6 +10,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
 import { MessagesService } from './messages.service';
+import { UsersService } from '../users/users.service';
 
 @WebSocketGateway({
   cors: {
@@ -20,12 +21,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
 
+  private onlineUsers = new Map<string, Set<string>>(); // userId -> Set of socketIds
+
   constructor(
     private readonly messagesService: MessagesService,
     private readonly jwtService: JwtService,
+    private readonly usersService: UsersService,
   ) {}
 
-  handleConnection(client: Socket) {
+  async handleConnection(client: Socket) {
     const userId = this.getUserIdFromClient(client);
     if (!userId) {
       client.disconnect(true);
@@ -33,10 +37,39 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     client.data.userId = userId;
-    console.log(`Client connected: ${client.id}`);
+    
+    // Track online status
+    if (!this.onlineUsers.has(userId)) {
+      this.onlineUsers.set(userId, new Set());
+    }
+    this.onlineUsers.get(userId)?.add(client.id);
+
+    await this.usersService.updateLastSeen(userId);
+    
+    // Notify others
+    this.server.emit('userStatus', { userId, status: 'online' });
+    console.log(`Client connected: ${client.id} (User: ${userId})`);
   }
 
-  handleDisconnect(client: Socket) {
+  async handleDisconnect(client: Socket) {
+    const userId = client.data.userId as string | undefined;
+    if (userId) {
+      const sockets = this.onlineUsers.get(userId);
+      if (sockets) {
+        sockets.delete(client.id);
+        if (sockets.size === 0) {
+          this.onlineUsers.delete(userId);
+          const user = await this.usersService.updateLastSeen(userId) as any;
+          
+          // Notify others with last seen if permitted
+          this.server.emit('userStatus', { 
+            userId, 
+            status: 'offline', 
+            lastSeenAt: user?.showLastSeen ? user?.lastSeenAt : null 
+          });
+        }
+      }
+    }
     console.log(`Client disconnected: ${client.id}`);
   }
 
@@ -57,6 +90,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     client.join(payload.conversationId);
+    
+    // When joining, also mark as read if permitted
+    const settings = await this.usersService.getPrivacySettings(userId) as any;
+    if (settings?.showReadReceipts) {
+      await this.messagesService.markConversationAsRead(userId, payload.conversationId);
+      // Notify the other person in the conversation
+      this.server.to(payload.conversationId).emit('messagesRead', { 
+        conversationId: payload.conversationId, 
+        userId 
+      });
+    }
+
     return { event: 'joined', data: payload.conversationId };
   }
 
@@ -79,6 +124,21 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     this.server.to(payload.conversationId).emit('newMessage', message);
     return message;
+  }
+
+  @SubscribeMessage('getUserStatus')
+  async handleGetUserStatus(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { userId: string }
+  ) {
+    const isOnline = this.onlineUsers.has(payload.userId);
+    const user = await this.usersService.findById(payload.userId) as any;
+    
+    return {
+      userId: payload.userId,
+      status: isOnline ? 'online' : 'offline',
+      lastSeenAt: (user?.showLastSeen || payload.userId === client.data.userId) ? user?.lastSeenAt : null
+    };
   }
 
   private getUserIdFromClient(client: Socket) {

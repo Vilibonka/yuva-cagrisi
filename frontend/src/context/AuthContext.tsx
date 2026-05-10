@@ -39,7 +39,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(session.user);
     setAccessToken(session.accessToken);
     storeAuthSession(session);
-    router.push('/');
+    
+    if (session.user.role === 'ADMIN') {
+      router.push('/admin');
+    } else {
+      router.push('/');
+    }
   };
 
   const logout = () => {

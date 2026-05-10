@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import api, { API_BASE_URL } from '@/api';
+import api, { API_BASE_URL, buildMediaUrl } from '@/api';
 import { getStoredAccessToken } from '@/lib/auth';
 import { io, Socket } from 'socket.io-client';
+import { useAuth } from '@/context/AuthContext';
 
 /* ─── Types ─────────────────────────────────────────────────────────────────── */
 
@@ -13,7 +14,7 @@ interface Message {
   content: string;
   status: string;
   createdAt: string;
-  sender?: { id: string; fullName: string };
+  sender?: { id: string; fullName: string; profileImageUrl?: string | null };
 }
 
 interface BlockStatus {
@@ -27,6 +28,7 @@ interface ChatProps {
   currentUserId: string;
   otherUserId?: string;
   otherUserName?: string;
+  otherUserProfileImage?: string | null;
 }
 
 /* ─── Helpers ────────────────────────────────────────────────────────────────── */
@@ -44,10 +46,14 @@ export default function Chat({
   currentUserId,
   otherUserId,
   otherUserName,
+  otherUserProfileImage,
 }: ChatProps) {
+  const { user: currentUser } = useAuth();
   const [messages, setMessages]         = useState<Message[]>([]);
   const [inputValue, setInputValue]     = useState('');
   const [socket, setSocket]             = useState<Socket | null>(null);
+  const [otherStatus, setOtherStatus]     = useState<'online' | 'offline'>('offline');
+  const [otherLastSeen, setOtherLastSeen] = useState<string | null>(null);
   const [loading, setLoading]           = useState(true);
   const [blockStatus, setBlockStatus]   = useState<BlockStatus | null>(null);
   const [showBlockModal, setShowBlockModal] = useState(false);
@@ -58,6 +64,21 @@ export default function Chat({
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   useEffect(() => { scrollToBottom(); }, [messages]);
+
+  const formatTimeAgo = (dateStr: string) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const diff = Date.now() - date.getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Az önce';
+    if (mins < 60) return `${mins} dk önce`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours} sa önce`;
+    const days = Math.floor(hours / 24);
+    if (days === 1) return 'Dün';
+    if (days < 7) return `${days} gün önce`;
+    return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+  };
 
   /* ── Block status ── */
   const checkBlockStatus = useCallback(async () => {
@@ -87,12 +108,36 @@ export default function Chat({
 
     const newSocket = io(API_BASE_URL, { auth: { token }, transports: ['websocket'] });
     setSocket(newSocket);
-    newSocket.on('connect', () => newSocket.emit('joinConversation', { conversationId }));
+    
+    newSocket.on('connect', () => {
+      newSocket.emit('joinConversation', { conversationId });
+      if (otherUserId) {
+        newSocket.emit('getUserStatus', { userId: otherUserId }, (res: any) => {
+          setOtherStatus(res.status);
+          setOtherLastSeen(res.lastSeenAt);
+        });
+      }
+    });
+
     newSocket.on('newMessage', (msg: Message) => {
       setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
     });
+
+    newSocket.on('userStatus', (data: { userId: string, status: 'online' | 'offline', lastSeenAt?: string }) => {
+      if (data.userId === otherUserId) {
+        setOtherStatus(data.status);
+        if (data.lastSeenAt) setOtherLastSeen(data.lastSeenAt);
+      }
+    });
+
+    newSocket.on('messagesRead', (data: { conversationId: string, userId: string }) => {
+      if (data.conversationId === conversationId && data.userId === otherUserId) {
+        setMessages(prev => prev.map(m => m.senderUserId === currentUserId ? { ...m, status: 'READ' } : m));
+      }
+    });
+
     return () => { newSocket.disconnect(); };
-  }, [conversationId, checkBlockStatus]);
+  }, [conversationId, checkBlockStatus, otherUserId, currentUserId]);
 
   /* ── Actions ── */
   const sendMessage = (e: React.FormEvent) => {
@@ -161,14 +206,30 @@ export default function Chat({
 
         {/* Avatar + name */}
         <div className="flex items-center gap-3 relative z-10">
-          <div className="relative w-10 h-10 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center text-white text-sm font-black shadow-md">
-            {otherUserName?.charAt(0).toUpperCase() ?? '💬'}
-            <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 border-2 border-orange-400 rounded-full ${isBlocked ? 'bg-red-400' : 'bg-emerald-400'}`} />
+          <div className="relative w-10 h-10 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-md">
+            {otherUserProfileImage ? (
+              <img 
+                src={buildMediaUrl(otherUserProfileImage) || undefined} 
+                className="w-full h-full object-cover"
+                alt={otherUserName || 'User'}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-200 text-sm font-black text-white/50 uppercase">
+                {otherUserName?.charAt(0) ?? '?'}
+              </div>
+            )}
+            {(otherStatus === 'online' || otherLastSeen || isBlocked) && (
+              <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 border-2 border-white rounded-full ${isBlocked ? 'bg-red-400' : (otherStatus === 'online' ? 'bg-emerald-400' : 'bg-gray-400')}`} />
+            )}
           </div>
           <div>
             <p className="text-sm font-bold text-white tracking-tight">{otherUserName ?? 'Sohbet'}</p>
-            <p className="text-[10px] text-white/70 font-medium">
-              {isBlocked ? '⛔ Engellendi' : '● Çevrimiçi'}
+            <p className="text-[10px] text-white/70 font-medium tracking-wide">
+              {isBlocked ? '⛔ Engellendi' : (
+                otherStatus === 'online' 
+                  ? '● Çevrimiçi' 
+                  : (otherLastSeen ? `Son görülme: ${formatTimeAgo(otherLastSeen)}` : '')
+              )}
             </p>
           </div>
         </div>
@@ -182,9 +243,6 @@ export default function Chat({
                 disabled={actionLoading}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/20 backdrop-blur-sm text-white text-xs font-bold hover:bg-white/30 transition-all disabled:opacity-50"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                </svg>
                 Engeli Kaldır
               </button>
             ) : !blockStatus?.blockedByThem && (
@@ -192,9 +250,6 @@ export default function Chat({
                 onClick={() => setShowBlockModal(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-sm text-white/80 text-xs font-bold hover:bg-red-500/40 hover:text-white transition-all"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                </svg>
                 Engelle
               </button>
             )}
@@ -219,6 +274,7 @@ export default function Chat({
             const isMe      = msg.senderUserId === currentUserId;
             const isDeleted = msg.status === 'DELETED';
             const showDate  = i === 0 || new Date(msg.createdAt).toDateString() !== new Date(messages[i - 1].createdAt).toDateString();
+            const senderProfileImage = isMe ? currentUser?.profileImageUrl : msg.sender?.profileImageUrl;
 
             return (
               <React.Fragment key={msg.id}>
@@ -230,51 +286,61 @@ export default function Chat({
                   </div>
                 )}
 
-                <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                  {!isMe && msg.sender?.fullName && (
-                    <span className="text-[10px] font-bold text-orange-500/80 ml-1 mb-0.5 tracking-wide uppercase">
-                      {msg.sender.fullName}
-                    </span>
-                  )}
-
-                  <div className={`group relative px-4 py-2.5 max-w-[75%] text-sm leading-relaxed transition-all ${
-                    isDeleted
-                      ? 'bg-gray-100 text-gray-400 italic rounded-2xl border border-gray-200'
-                      : isMe
-                        ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-2xl rounded-br-sm shadow-lg shadow-orange-300/30'
-                        : 'bg-white text-gray-800 border border-gray-100 rounded-2xl rounded-bl-sm shadow-md shadow-gray-100/60'
-                  }`}>
-                    {isDeleted ? (
-                      <span className="flex items-center gap-1.5">
-                        <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                        </svg>
-                        {msg.content}
-                      </span>
+                <div className={`flex items-end gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                  {/* Bubble Avatar */}
+                  <div className="w-7 h-7 rounded-full flex-shrink-0 bg-gray-100 overflow-hidden shadow-sm border border-white">
+                    {senderProfileImage ? (
+                      <img 
+                        src={buildMediaUrl(senderProfileImage) || undefined} 
+                        className="w-full h-full object-cover"
+                        alt="sender"
+                      />
                     ) : (
-                      <span className="whitespace-pre-wrap break-words">{msg.content}</span>
-                    )}
-
-                    {/* Delete on hover */}
-                    {isMe && !isDeleted && (
-                      <button
-                        onClick={() => softDelete(msg.id)}
-                        title="Mesajı Sil"
-                        className="absolute -left-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all w-7 h-7 rounded-full bg-white border border-gray-200 hover:border-red-200 hover:bg-red-50 flex items-center justify-center shadow-sm"
-                      >
-                        <svg className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                      <div className="w-full h-full flex items-center justify-center bg-gray-200 text-[10px] font-black text-gray-400 uppercase">
+                        {(isMe ? currentUser?.fullName : msg.sender?.fullName)?.charAt(0) ?? '?'}
+                      </div>
                     )}
                   </div>
 
-                  <span className="text-[10px] text-gray-400 font-medium mt-1 px-1 flex items-center gap-1">
-                    {formatTime(msg.createdAt)}
-                    {isMe && !isDeleted && msg.status === 'READ' && (
-                      <span className="text-blue-400 font-bold">✓✓</span>
+                  <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[75%]`}>
+                    {!isMe && msg.sender?.fullName && (
+                      <span className="text-[10px] font-bold text-orange-500/80 ml-1 mb-0.5 tracking-wide uppercase">
+                        {msg.sender.fullName}
+                      </span>
                     )}
-                  </span>
+
+                    <div className={`group relative px-4 py-2.5 text-sm leading-relaxed transition-all ${
+                      isDeleted
+                        ? 'bg-gray-100 text-gray-400 italic rounded-2xl border border-gray-200'
+                        : isMe
+                          ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-2xl rounded-br-sm shadow-lg shadow-orange-300/30'
+                          : 'bg-white text-gray-800 border border-gray-100 rounded-2xl rounded-bl-sm shadow-md shadow-gray-100/60'
+                    }`}>
+                      <span className="whitespace-pre-wrap break-words">{msg.content}</span>
+
+                      {/* Delete on hover */}
+                      {isMe && !isDeleted && (
+                        <button
+                          onClick={() => softDelete(msg.id)}
+                          title="Mesajı Sil"
+                          className="absolute -left-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all w-7 h-7 rounded-full bg-white border border-gray-200 hover:border-red-200 hover:bg-red-50 flex items-center justify-center shadow-sm"
+                        >
+                          <svg className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+
+                    <span className="text-[10px] text-gray-400 font-medium mt-1 px-1 flex items-center gap-1.5 justify-end">
+                      {formatTime(msg.createdAt)}
+                      {isMe && !isDeleted && (
+                        <span className={`font-black text-[11px] leading-none ${msg.status === 'READ' ? 'text-blue-500' : 'text-gray-300'}`} title={msg.status === 'READ' ? 'Okundu' : 'İletildi'}>
+                          {msg.status === 'READ' ? '✓✓' : '✓'}
+                        </span>
+                      )}
+                    </span>
+                  </div>
                 </div>
               </React.Fragment>
             );

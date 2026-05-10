@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '@/api';
 import { AlertTriangle, X } from 'lucide-react';
 
 export default function ReportModal({ postId, isOpen, onClose }) {
@@ -15,7 +15,7 @@ export default function ReportModal({ postId, isOpen, onClose }) {
     e.preventDefault();
     setStatus('LOADING');
     try {
-      await axios.post(`http://localhost:3000/reports/${postId}`, { reason, description });
+      await api.post(`/reports/${postId}`, { reason, description });
       setStatus('SUCCESS');
       setTimeout(() => onClose(), 2000);
     } catch (err) {

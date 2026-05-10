@@ -44,7 +44,7 @@ export class MessagesService {
         content,
         status: MessageStatus.SENT,
       },
-      include: { sender: { select: { id: true, fullName: true } } }
+      include: { sender: { select: { id: true, fullName: true, profileImageUrl: true } } }
     });
 
     await this.prisma.conversation.update({
@@ -101,7 +101,7 @@ export class MessagesService {
     return this.prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: 'asc' },
-      include: { sender: { select: { id: true, fullName: true } } }
+      include: { sender: { select: { id: true, fullName: true, profileImageUrl: true } } }
     });
   }
 

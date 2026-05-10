@@ -145,14 +145,24 @@ export default function Navbar() {
           >
             İlanlar
           </Link>
-          <Link
-            href="/listings/create"
-            className={`flex items-center gap-1.5 text-sm font-semibold transition-colors ${
-              pathname === '/listings/create' ? 'text-orange-600' : 'text-gray-600 hover:text-orange-600'
-            }`}
-          >
-            <PlusSquare className="h-4 w-4" /> İlan Ver
-          </Link>
+          {user?.role !== 'ADMIN' && (
+            <Link
+              href="/listings/create"
+              className={`flex items-center gap-1.5 text-sm font-semibold transition-colors ${
+                pathname === '/listings/create' ? 'text-orange-600' : 'text-gray-600 hover:text-orange-600'
+              }`}
+            >
+              <PlusSquare className="h-4 w-4" /> İlan Ver
+            </Link>
+          )}
+          {user?.role === 'ADMIN' && (
+            <Link
+              href="/admin"
+              className={`flex items-center gap-1.5 text-sm font-black text-orange-600 transition-all hover:scale-105`}
+            >
+              <LayoutDashboard className="h-4 w-4" /> Yönetim Paneli
+            </Link>
+          )}
         </nav>
 
         <div className="flex items-center gap-3">
@@ -280,23 +290,20 @@ export default function Navbar() {
                   {user?.fullName?.split(' ')[0]}
                 </button>
                 <div className="absolute right-0 top-full mt-2 w-52 origin-top-right rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl shadow-gray-200/60 transition-all scale-95 opacity-0 invisible group-hover:scale-100 group-hover:opacity-100 group-hover:visible z-[100]">
-                  <Link href="/profile/settings" className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition">
-                    <Settings className="h-4 w-4" /> Ayarlar
-                  </Link>
-                  <Link href="/my-requests" className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition">
-                    <LayoutDashboard className="h-4 w-4" /> Başvurularım
-                  </Link>
-                  <Link href="/my-listings" className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition">
-                    <PlusSquare className="h-4 w-4" /> İlanlarım
-                  </Link>
-
-                  {user?.role === 'ADMIN' && (
-                    <>
-                      <div className="my-1.5 border-t border-gray-100" />
-                      <Link href="/admin" className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold text-orange-600 hover:bg-orange-50 transition">
-                        <LayoutDashboard className="h-4 w-4" /> Yönetim Paneli
-                      </Link>
-                    </>
+                  {user?.role !== 'ADMIN' && (
+                    <Link href="/profile/settings" className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition">
+                      <User className="h-4 w-4" /> Profil
+                    </Link>
+                  )}
+                  {user?.role !== 'ADMIN' && (
+                    <Link href="/my-requests" className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition">
+                      <LayoutDashboard className="h-4 w-4" /> Başvurularım
+                    </Link>
+                  )}
+                  {user?.role !== 'ADMIN' && (
+                    <Link href="/my-listings" className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition">
+                      <PlusSquare className="h-4 w-4" /> İlanlarım
+                    </Link>
                   )}
 
                   <div className="my-1.5 border-t border-gray-100" />

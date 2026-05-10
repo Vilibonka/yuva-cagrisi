@@ -21,12 +21,19 @@ export class UsersService {
     async findById(id: string) {
         const user = await this.prisma.user.findUnique({
             where: { id },
-            select: { id: true, fullName: true, email: true, contactPhone: true, city: true, district: true, biography: true, role: true, createdAt: true, isActive: true }
+            select: { 
+                id: true, fullName: true, email: true, contactPhone: true,
+                city: { select: { name: true } },
+                district: true, biography: true, role: true, profileImageUrl: true, 
+                createdAt: true, isActive: true, lastSeenAt: true,
+                showReadReceipts: true, showLastSeen: true
+            } as any
         });
         if (!user) return null;
+        const { city, ...rest } = user as any;
         return {
-            ...user,
-            city: user.city?.name || null
+            ...rest,
+            city: city?.name || null
         };
     }
 
@@ -49,13 +56,33 @@ export class UsersService {
 
         const user = await this.prisma.user.update({
             where: { id },
-            data: updatedData,
-            select: { id: true, fullName: true, email: true, contactPhone: true, city: true, district: true, biography: true }
+            data: updatedData as any,
+            select: { 
+                id: true, fullName: true, email: true, contactPhone: true,
+                city: { select: { name: true } },
+                district: true, biography: true, profileImageUrl: true, createdAt: true,
+                lastSeenAt: true, showReadReceipts: true, showLastSeen: true
+            } as any
         });
+        const { city, ...rest } = user as any;
         return {
-            ...user,
-            city: user.city?.name || null
+            ...rest,
+            city: city?.name || null
         };
+    }
+
+    async updateLastSeen(id: string) {
+        return this.prisma.user.update({
+            where: { id },
+            data: { lastSeenAt: new Date() } as any
+        });
+    }
+
+    async getPrivacySettings(id: string) {
+        return this.prisma.user.findUnique({
+            where: { id },
+            select: { showReadReceipts: true, showLastSeen: true } as any
+        });
     }
 
     async toggleSavedPost(userId: string, postId: string) {

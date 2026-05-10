@@ -38,6 +38,10 @@ export interface AuthUser {
   biography?: string | null;
   role?: string;
   profileImageUrl?: string | null;
+  createdAt?: string;
+  lastSeenAt?: string | null;
+  showReadReceipts?: boolean;
+  showLastSeen?: boolean;
 }
 
 export interface AuthSession {

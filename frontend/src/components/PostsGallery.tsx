@@ -306,17 +306,32 @@ export default function PostsGallery() {
             <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-orange-100 to-amber-50 shadow-md">
               <Bone className="h-10 w-10 text-orange-400" />
             </div>
-            <h3 className="text-xl font-black text-gray-800 tracking-tight">Aramanıza uygun ilan bulunamadı</h3>
-            <p className="mt-2 max-w-md text-gray-400 text-sm leading-relaxed">
-              Filtreleri değiştirerek veya temizleyerek tekrar deneyin. Yeni ilanlar sürekli eklenmektedir.
-            </p>
-            {activeFilterCount > 0 && (
-              <button
-                onClick={clearFilters}
-                className="mt-6 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-orange-200/50 transition-all hover:-translate-y-0.5 hover:shadow-xl"
-              >
-                Filtreleri Temizle
-              </button>
+            {activeFilterCount > 0 ? (
+              <>
+                <h3 className="text-xl font-black text-gray-800 tracking-tight">Aramanıza uygun ilan bulunamadı</h3>
+                <p className="mt-2 max-w-md text-gray-400 text-sm leading-relaxed">
+                  Filtreleri değiştirerek veya temizleyerek tekrar deneyin. Yeni ilanlar sürekli eklenmektedir.
+                </p>
+                <button
+                  onClick={clearFilters}
+                  className="mt-6 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-orange-200/50 transition-all hover:-translate-y-0.5 hover:shadow-xl"
+                >
+                  Filtreleri Temizle
+                </button>
+              </>
+            ) : (
+              <>
+                <h3 className="text-xl font-black text-gray-800 tracking-tight">Henüz ilan oluşturulmadı</h3>
+                <p className="mt-2 max-w-md text-gray-400 text-sm leading-relaxed">
+                  Platformumuzda şu an aktif ilan bulunmuyor. İlk ilanı siz vererek bir canın yuva bulmasına yardımcı olabilirsiniz!
+                </p>
+                <Link
+                  href="/listings/create"
+                  className="mt-6 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-orange-200/50 transition-all hover:-translate-y-0.5 hover:shadow-xl"
+                >
+                  İlan Oluştur
+                </Link>
+              </>
             )}
           </div>
         ) : (

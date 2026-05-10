@@ -294,7 +294,13 @@ export default function PostDetails() {
         </button>
         <div className="flex items-center gap-3">
           {!isOwner && (
-            <button onClick={() => setIsReportOpen(true)} className="flex items-center gap-1.5 text-xs font-bold text-gray-400 transition hover:text-red-500 rounded-lg px-3 py-2 hover:bg-red-50">
+            <button 
+              onClick={() => {
+                if (!currentUser) { router.push('/login'); return; }
+                setIsReportOpen(true);
+              }} 
+              className="flex items-center gap-1.5 text-xs font-bold text-gray-400 transition hover:text-red-500 rounded-lg px-3 py-2 hover:bg-red-50"
+            >
               <AlertTriangle className="h-3.5 w-3.5" /> Şikâyet Et
             </button>
           )}
@@ -635,12 +641,10 @@ export default function PostDetails() {
                   disabled={loadingChat}
                   onClick={async () => {
                     if (!currentUser) { router.push('/login'); return; }
-                    if (showChat) { setShowChat(false); return; }
                     setLoadingChat(true);
                     try {
                       const res = await api.post('/conversations', { targetUserId: post.ownerUserId, postId: post.id });
-                      setActiveConversationId(res.data.id);
-                      setShowChat(true);
+                      router.push(`/messages?conversationId=${res.data.id}`);
                     } catch (err) {
                       const message = err.response?.data?.message;
                       setActionError(Array.isArray(message) ? message.join(', ') : message || 'Sohbet başlatılamadı.');
@@ -649,14 +653,8 @@ export default function PostDetails() {
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 py-3 text-sm font-bold text-white shadow-sm shadow-orange-200/40 transition hover:from-orange-600 hover:to-orange-700 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   <MessageSquare className="h-4 w-4" /> 
-                  {loadingChat ? 'Bağlanıyor...' : showChat ? 'Sohbeti Gizle' : 'Sahibi ile İletişime Geç'}
+                  {loadingChat ? 'Bağlanıyor...' : 'Sahibi ile İletişime Geç'}
                 </button>
-
-                {showChat && activeConversationId && currentUser && (
-                  <div className="mt-4">
-                    <Chat conversationId={activeConversationId} currentUserId={currentUser.id} />
-                  </div>
-                )}
               </div>
             )}
           </div>

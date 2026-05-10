@@ -1,8 +1,9 @@
-import { Controller, Get, Patch, Param, UseGuards, NotFoundException, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Patch, Param, UseGuards, NotFoundException, Delete, Query, Body, Post, ConflictException } from '@nestjs/common';
 import { AdminGuard } from './admin.guard';
 import { PrismaService } from '../prisma/prisma.service';
-import { ReportStatus } from '@prisma/client';
+import { ReportStatus, UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import * as bcrypt from 'bcrypt';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, AdminGuard)
@@ -29,6 +30,36 @@ export class AdminController {
       orderBy: { createdAt: 'desc' },
       take: limit,
       skip,
+    });
+  }
+
+  @Post('users')
+  async createUser(@Body() data: any) {
+    const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
+    if (existing) throw new ConflictException('User already exists');
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(data.password || 'TemporaryPassword123!', salt);
+
+    return this.prisma.user.create({
+      data: {
+        email: data.email,
+        fullName: data.fullName,
+        passwordHash: hashedPassword,
+        role: data.role || UserRole.USER,
+        isActive: true,
+        isVerified: true
+      },
+      select: { id: true, fullName: true, email: true, role: true, createdAt: true }
+    });
+  }
+
+  @Patch('users/:id/role')
+  async updateUserRole(@Param('id') id: string, @Body('role') role: UserRole) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { role },
+      select: { id: true, fullName: true, email: true, role: true }
     });
   }
 
@@ -103,6 +134,42 @@ export class AdminController {
   async deletePost(@Param('id') id: string) {
     return this.prisma.petPost.delete({
       where: { id }
+    });
+  }
+
+  @Get('posts')
+  async getAllPosts(@Query() query: any) {
+    const page = Math.max(1, parseInt(query.page || '1', 10));
+    const limit = Math.min(100, Math.max(1, parseInt(query.limit || '50', 10)));
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (query.q) {
+      where.OR = [
+        { title: { contains: query.q, mode: 'insensitive' } },
+        { description: { contains: query.q, mode: 'insensitive' } },
+      ];
+    }
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    return this.prisma.petPost.findMany({
+      where,
+      include: {
+        pet: {
+          select: { name: true, species: true }
+        },
+        owner: {
+          select: { fullName: true, email: true }
+        },
+        city: {
+          select: { name: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip,
     });
   }
 }
