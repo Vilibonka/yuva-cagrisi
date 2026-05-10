@@ -10,6 +10,10 @@ export class CreatePetPostDto {
 
   @IsString()
   @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
   breed?: string;
 
   @IsEnum(Gender)
@@ -27,11 +31,29 @@ export class CreatePetPostDto {
 
   @IsString()
   @IsOptional()
+  color?: string;
+
+  @IsString()
+  @IsOptional()
   healthSummary?: string;
 
   @IsString()
   @IsOptional()
+  vaccinationSummary?: string;
+
+  @IsString()
+  @IsOptional()
+  specialNeedsNote?: string;
+
+  @IsString()
+  @IsOptional()
   temperament?: string;
+
+  @IsOptional()
+  isVaccinated?: any;
+
+  @IsOptional()
+  isNeutered?: any;
 
   // Post info
   @IsEnum(PostType)
@@ -49,4 +71,15 @@ export class CreatePetPostDto {
   @IsString()
   @IsNotEmpty()
   city!: string;
+
+  @IsString()
+  @IsOptional()
+  district?: string;
+
+  @IsString()
+  @IsOptional()
+  addressNote?: string;
+
+  @IsOptional()
+  isUrgent?: any;
 }

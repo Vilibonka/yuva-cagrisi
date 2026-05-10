@@ -250,19 +250,27 @@ export default function MyListingsPage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href={`/posts/${post.id}`}
-                      className="flex-1 text-center rounded-xl bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-600 transition hover:bg-orange-100"
-                    >
-                      İlanı Görüntüle
-                    </Link>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/posts/${post.id}`}
+                        className="flex-1 text-center rounded-xl bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-600 transition hover:bg-orange-100"
+                      >
+                        Görüntüle
+                      </Link>
+                      <Link
+                        href={`/listings/edit/${post.id}`}
+                        className="flex-1 text-center rounded-xl bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-100 border border-gray-200/60"
+                      >
+                        Düzenle
+                      </Link>
+                    </div>
                     {pendingRequests > 0 && (
                       <Link
                         href={`/posts/${post.id}`}
-                        className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-orange-600 shadow-sm"
+                        className="w-full text-center rounded-xl bg-orange-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-orange-600 shadow-sm"
                       >
-                        Başvuruları İncele
+                        Başvuruları İncele ({pendingRequests})
                       </Link>
                     )}
                   </div>

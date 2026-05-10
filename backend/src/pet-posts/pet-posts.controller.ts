@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdoptionRequestsService } from '../adoption-requests/adoption-requests.service';
 import { PetPostsService } from './pet-posts.service';
 import { CreatePetPostDto } from './dto/create-pet-post.dto';
+import { UpdatePetPostDto } from './dto/update-pet-post.dto';
 import { UpdatePostStatusDto } from './dto/update-status.dto';
 
 // Standard simple multer configuration for local storage
@@ -72,5 +73,24 @@ export class PetPostsController {
     @Body() updateStatusDto: UpdatePostStatusDto
   ) {
     return this.petPostsService.updateStatus(req.user.id, id, updateStatusDto.status);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FilesInterceptor('images', 5, { storage }))
+  async update(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() updatePetPostDto: UpdatePetPostDto,
+    @UploadedFiles() files: Array<Express.Multer.File>
+  ) {
+    const userId = req.user.id;
+
+    const imageUrls = files?.map((file, index) => ({
+      url: `/uploads/images/${file.filename}`,
+      isPrimary: index === 0,
+    })) || [];
+
+    return this.petPostsService.update(userId, id, updatePetPostDto, imageUrls);
   }
 }

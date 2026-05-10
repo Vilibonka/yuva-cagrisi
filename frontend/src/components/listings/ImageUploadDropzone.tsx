@@ -2,16 +2,44 @@
 
 import React, { useCallback, useState } from "react";
 import { UploadCloud, X, ImagePlus, Star } from "lucide-react";
+import { buildMediaUrl } from "@/api";
+
+export interface ExistingImage {
+  id: string;
+  url: string;
+}
 
 interface ImageUploadDropzoneProps {
   onFilesChange: (files: File[]) => void;
+  onKeptImagesChange?: (urls: string[]) => void;
   maxFiles?: number;
+  initialImages?: ExistingImage[];
 }
 
-export function ImageUploadDropzone({ onFilesChange, maxFiles = 5 }: ImageUploadDropzoneProps) {
+export function ImageUploadDropzone({ onFilesChange, onKeptImagesChange, maxFiles = 5, initialImages = [] }: ImageUploadDropzoneProps) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [keptImages, setKeptImages] = useState<ExistingImage[]>(initialImages);
+
+  // Initialize kept images when prop changes (for data fetching)
+  React.useEffect(() => {
+    setKeptImages(initialImages);
+    if (onKeptImagesChange) {
+      onKeptImagesChange(initialImages.map(img => img.url));
+    }
+  }, [initialImages]);
+
+  // Derived previews
+  const previews = [
+    ...keptImages.map((img) => img.url),
+    ...selectedFiles.map((file) => {
+      // Using a small hack to cache object URLs to avoid recreation
+      if (!(file as any)._preview) {
+        (file as any)._preview = URL.createObjectURL(file);
+      }
+      return (file as any)._preview;
+    })
+  ];
 
   const handleFiles = (newFiles: FileList | null) => {
     if (!newFiles) return;
@@ -21,12 +49,16 @@ export function ImageUploadDropzone({ onFilesChange, maxFiles = 5 }: ImageUpload
 
     if (imageFiles.length === 0) return;
 
-    const combinedFiles = [...selectedFiles, ...imageFiles].slice(0, maxFiles);
-    setSelectedFiles(combinedFiles);
-    onFilesChange(combinedFiles);
+    const currentTotal = keptImages.length + selectedFiles.length;
+    const remainingSlots = maxFiles - currentTotal;
+    
+    if (remainingSlots <= 0) return;
 
-    const newPreviews = imageFiles.map((file) => URL.createObjectURL(file));
-    setPreviews((prev) => [...prev, ...newPreviews].slice(0, maxFiles));
+    const allowedNewFiles = imageFiles.slice(0, remainingSlots);
+    const newSelected = [...selectedFiles, ...allowedNewFiles];
+    
+    setSelectedFiles(newSelected);
+    onFilesChange(newSelected);
   };
 
   const onDrag = useCallback((e: React.DragEvent) => {
@@ -49,12 +81,24 @@ export function ImageUploadDropzone({ onFilesChange, maxFiles = 5 }: ImageUpload
   }, [selectedFiles, maxFiles]);
 
   const removeFile = (indexToRemove: number) => {
-    const updatedFiles = selectedFiles.filter((_, idx) => idx !== indexToRemove);
-    const updatedPreviews = previews.filter((_, idx) => idx !== indexToRemove);
-    URL.revokeObjectURL(previews[indexToRemove]);
-    setSelectedFiles(updatedFiles);
-    setPreviews(updatedPreviews);
-    onFilesChange(updatedFiles);
+    if (indexToRemove < keptImages.length) {
+      // Remove an existing image
+      const newKept = keptImages.filter((_, idx) => idx !== indexToRemove);
+      setKeptImages(newKept);
+      if (onKeptImagesChange) {
+        onKeptImagesChange(newKept.map(img => img.url));
+      }
+    } else {
+      // Remove a newly selected file
+      const selectedIndex = indexToRemove - keptImages.length;
+      const fileToRemove = selectedFiles[selectedIndex];
+      if ((fileToRemove as any)._preview) {
+        URL.revokeObjectURL((fileToRemove as any)._preview);
+      }
+      const updatedFiles = selectedFiles.filter((_, idx) => idx !== selectedIndex);
+      setSelectedFiles(updatedFiles);
+      onFilesChange(updatedFiles);
+    }
   };
 
   return (
@@ -104,7 +148,7 @@ export function ImageUploadDropzone({ onFilesChange, maxFiles = 5 }: ImageUpload
                 className="relative group rounded-xl overflow-hidden border-2 border-gray-100 shadow-sm aspect-square bg-gray-100 transition-all hover:shadow-md hover:border-orange-200"
               >
                 <img
-                  src={preview}
+                  src={buildMediaUrl(preview) || ""}
                   alt={`Önizleme ${index + 1}`}
                   className="object-cover w-full h-full"
                 />

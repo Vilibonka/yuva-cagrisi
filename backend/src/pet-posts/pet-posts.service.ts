@@ -18,12 +18,18 @@ export class PetPostsService {
       const pet = await tx.pet.create({
         data: {
           createdByUserId: userId,
+          name: createPetPostDto.name,
           species: createPetPostDto.species,
           breed: createPetPostDto.breed,
           gender: createPetPostDto.gender,
           estimatedAgeMonths: createPetPostDto.estimatedAgeMonths ? parseInt(createPetPostDto.estimatedAgeMonths as any, 10) : null,
           size: createPetPostDto.size,
+          color: createPetPostDto.color,
           healthSummary: createPetPostDto.healthSummary,
+          vaccinationSummary: createPetPostDto.vaccinationSummary,
+          isVaccinated: createPetPostDto.isVaccinated === 'true' || createPetPostDto.isVaccinated === true,
+          isNeutered: createPetPostDto.isNeutered === 'true' || createPetPostDto.isNeutered === true,
+          specialNeedsNote: createPetPostDto.specialNeedsNote,
           temperament: createPetPostDto.temperament,
         },
       });
@@ -44,7 +50,11 @@ export class PetPostsService {
           title: createPetPostDto.title,
           description: createPetPostDto.description,
           cityId: cityRecord.id,
+          district: createPetPostDto.district,
+          addressNote: createPetPostDto.addressNote,
+          isUrgent: createPetPostDto.isUrgent === 'true' || createPetPostDto.isUrgent === true,
           status: PostStatus.ACTIVE,
+          publishedAt: new Date(),
           images: {
             create: imageUrls.map((img) => ({
               imageUrl: img.url,
@@ -62,6 +72,98 @@ export class PetPostsService {
       return {
         ...post,
         city: post.city?.name || 'Bilinmiyor'
+      };
+    });
+  }
+
+  async update(userId: string, postId: string, updateDto: any, imageUrls: { url: string, isPrimary: boolean }[]) {
+    const post = await this.prisma.petPost.findUnique({ where: { id: postId }, include: { pet: true } });
+    if (!post) throw new NotFoundException('Post not found');
+    if (post.ownerUserId !== userId) throw new ForbiddenException('Not authorized');
+
+    let cityRecord = updateDto.city ? await this.prisma.city.findFirst({
+      where: { name: { equals: updateDto.city, mode: 'insensitive' } }
+    }) : undefined;
+
+    return this.prisma.$transaction(async (tx) => {
+      // update pet
+      await tx.pet.update({
+        where: { id: post.petId },
+        data: {
+          name: updateDto.name !== undefined ? updateDto.name : undefined,
+          species: updateDto.species,
+          breed: updateDto.breed !== undefined ? updateDto.breed : undefined,
+          gender: updateDto.gender,
+          estimatedAgeMonths: updateDto.estimatedAgeMonths ? parseInt(updateDto.estimatedAgeMonths as any, 10) : undefined,
+          size: updateDto.size,
+          color: updateDto.color !== undefined ? updateDto.color : undefined,
+          healthSummary: updateDto.healthSummary !== undefined ? updateDto.healthSummary : undefined,
+          vaccinationSummary: updateDto.vaccinationSummary !== undefined ? updateDto.vaccinationSummary : undefined,
+          isVaccinated: updateDto.isVaccinated !== undefined ? (updateDto.isVaccinated === 'true' || updateDto.isVaccinated === true) : undefined,
+          isNeutered: updateDto.isNeutered !== undefined ? (updateDto.isNeutered === 'true' || updateDto.isNeutered === true) : undefined,
+          specialNeedsNote: updateDto.specialNeedsNote !== undefined ? updateDto.specialNeedsNote : undefined,
+          temperament: updateDto.temperament !== undefined ? updateDto.temperament : undefined,
+        }
+      });
+
+      // update post
+      const updatedPost = await tx.petPost.update({
+        where: { id: postId },
+        data: {
+          postType: updateDto.postType,
+          title: updateDto.title,
+          description: updateDto.description,
+          cityId: cityRecord ? cityRecord.id : undefined,
+          district: updateDto.district !== undefined ? updateDto.district : undefined,
+          addressNote: updateDto.addressNote !== undefined ? updateDto.addressNote : undefined,
+          isUrgent: updateDto.isUrgent !== undefined ? (updateDto.isUrgent === 'true' || updateDto.isUrgent === true) : undefined,
+        },
+        include: { pet: true, images: true, city: true }
+      });
+
+        // Handle kept images
+        if (updateDto.keptImages !== undefined) {
+          let keptImageUrls: string[] = [];
+          try {
+            keptImageUrls = JSON.parse(updateDto.keptImages);
+          } catch (e) {}
+
+          await tx.postImage.deleteMany({
+            where: {
+              postId,
+              imageUrl: { notIn: keptImageUrls }
+            }
+          });
+        }
+
+        // Handle new images
+        if (imageUrls && imageUrls.length > 0) {
+          await tx.postImage.createMany({
+            data: imageUrls.map(img => ({
+              postId,
+              imageUrl: img.url,
+              isPrimary: false
+            }))
+          });
+        }
+
+        // Ensure primary image logic
+        const currentImages = await tx.postImage.findMany({ where: { postId }, orderBy: { createdAt: 'asc' } });
+        if (currentImages.length > 0) {
+          const hasPrimary = currentImages.some(img => img.isPrimary);
+          if (!hasPrimary) {
+            await tx.postImage.update({
+              where: { id: currentImages[0].id },
+              data: { isPrimary: true }
+            });
+          }
+        }
+        
+        updatedPost.images = await tx.postImage.findMany({ where: { postId }, orderBy: { createdAt: 'asc' } });
+
+        return {
+        ...updatedPost,
+        city: updatedPost.city?.name || 'Bilinmiyor'
       };
     });
   }

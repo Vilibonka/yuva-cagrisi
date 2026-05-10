@@ -59,9 +59,12 @@ interface City {
   name: string;
 }
 
-export default function CreateListingPage() {
+export default function EditListingPage({ params }: { params: { id: string } }) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
   const [images, setImages] = useState<File[]>([]);
+  const [initialImages, setInitialImages] = useState<{ id: string; url: string; }[]>([]);
+  const [keptImages, setKeptImages] = useState<string[]>([]);
   const [imageError, setImageError] = useState<string | null>(null);
   const [cities, setCities] = useState<City[]>([]);
   const [citiesLoading, setCitiesLoading] = useState(true);
@@ -91,10 +94,90 @@ export default function CreateListingPage() {
     },
   });
 
+  // Fetch Cities and Post Data
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [citiesRes, postRes] = await Promise.all([
+          api.get<City[]>("/cities"),
+          api.get(`/pet-posts/${params.id}`)
+        ]);
+        
+        setCities(citiesRes.data);
+        setCitiesLoading(false);
+
+        const postData = postRes.data;
+        const pet = postData.pet;
+
+        // Map Age
+        let mappedAge: "Baby" | "Young" | "Adult" | "Senior" | "" = "";
+        if (pet.estimatedAgeMonths !== null) {
+          if (pet.estimatedAgeMonths <= 6) mappedAge = "Baby";
+          else if (pet.estimatedAgeMonths <= 24) mappedAge = "Young";
+          else if (pet.estimatedAgeMonths <= 84) mappedAge = "Adult";
+          else mappedAge = "Senior";
+        }
+
+        // Map Species
+        let mappedSpecies: "Dog" | "Cat" | "Bird" | "Other" = "Other";
+        if (pet.species === "DOG") mappedSpecies = "Dog";
+        else if (pet.species === "CAT") mappedSpecies = "Cat";
+        else if (pet.species === "BIRD") mappedSpecies = "Bird";
+
+        // Map Gender
+        let mappedGender: "Male" | "Female" | "Unknown" = "Unknown";
+        if (pet.gender === "MALE") mappedGender = "Male";
+        else if (pet.gender === "FEMALE") mappedGender = "Female";
+
+        const isVaccinated = pet.healthSummary?.includes("Aşılı") || false;
+
+        if (postData.images && postData.images.length > 0) {
+          const imgs = postData.images.map((img: any) => ({
+            id: img.id,
+            url: img.imageUrl
+          }));
+          setInitialImages(imgs);
+          setKeptImages(imgs.map((i: any) => i.url));
+        }
+
+        reset({
+          postType: postData.postType,
+          name: pet.name || undefined,
+          species: mappedSpecies,
+          breed: pet.breed || undefined,
+          age: mappedAge as any,
+          gender: mappedGender,
+          isNeutered: pet.isNeutered || false,
+          isVaccinated: isVaccinated,
+          isUrgent: postData.isUrgent || false,
+          size: pet.size || "MEDIUM",
+          color: pet.color || undefined,
+          temperament: pet.temperament || undefined,
+          specialNeedsNote: pet.specialNeedsNote || undefined,
+          vaccinationSummary: pet.vaccinationSummary || undefined,
+          district: postData.district || undefined,
+          addressNote: postData.addressNote || undefined,
+          city: postData.city,
+          story: postData.description || "",
+        });
+
+      } catch (err) {
+        console.error(err);
+        toast.error("İlan bilgileri alınamadı.");
+        router.push("/my-listings");
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    loadData();
+  }, [params.id, reset, router]);
+
   const storyValue = watch("story", "");
 
   const onSubmit = async (data: ListingFormValues) => {
-    if (images.length === 0) {
+    // Toplam resim sayısı (eskiler + yeniler) en az 1 olmalı
+    if (images.length === 0 && keptImages.length === 0) {
       setImageError("Lütfen en az bir fotoğraf yükleyin.");
       return;
     }
@@ -146,22 +229,28 @@ export default function CreateListingPage() {
       if (data.vaccinationSummary) formData.append("vaccinationSummary", data.vaccinationSummary);
       if (data.district) formData.append("district", data.district);
       if (data.addressNote) formData.append("addressNote", data.addressNote);
-      
+
       formData.append("isVaccinated", data.isVaccinated.toString());
       formData.append("isNeutered", data.isNeutered.toString());
       formData.append("isUrgent", data.isUrgent.toString());
 
-      images.forEach((file) => {
-        formData.append("images", file);
-      });
+      // Pass kept images so the backend knows what to keep
+      formData.append("keptImages", JSON.stringify(keptImages));
 
-      await api.post("/pet-posts", formData, {
+      // Sadece resim yüklendiyse gönder, yoksa boş gitsin ve API eskilerini korusun (Eğer backend buna izin veriyorsa, vermiyorsa mecburen resim eklemeli)
+      if (images.length > 0) {
+        images.forEach((file) => {
+          formData.append("images", file);
+        });
+      }
+
+      await api.patch(`/pet-posts/${params.id}`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
 
-      toast.success("İlan başarıyla oluşturuldu! 🎉", {
+      toast.success("İlan başarıyla güncellendi! 🎉", {
         duration: 4000,
         style: {
           borderRadius: "12px",
@@ -172,13 +261,24 @@ export default function CreateListingPage() {
       });
       reset();
       setImages([]);
-      setTimeout(() => router.push("/posts"), 1500);
+      setTimeout(() => router.push("/my-listings"), 1500);
     } catch (error: unknown) {
-      toast.error(getApiErrorMessage(error, "İlan oluşturulurken bir hata oluştu."));
+      toast.error(getApiErrorMessage(error, "İlan güncellenirken bir hata oluştu."));
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (isFetching) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-white">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-orange-500" />
+          <p className="text-gray-500 font-medium">İlan bilgileri yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full relative overflow-hidden bg-white text-gray-800 py-6 px-4 sm:px-6 lg:px-8">
@@ -191,16 +291,16 @@ export default function CreateListingPage() {
         {/* Header */}
         <div className="mb-8 text-center">
           <div className="inline-flex items-center gap-2 rounded-full bg-orange-100 px-4 py-1.5 text-sm font-semibold text-orange-700 mb-4">
-            <PawPrint className="h-4 w-4" /> İlan Oluştur
+            <PawPrint className="h-4 w-4" /> İlanı Düzenle
           </div>
           <h1 className="text-4xl font-extrabold tracking-tight text-gray-900">
-            Bir Can İçin{" "}
+            İlan {" "}
             <span className="bg-gradient-to-r from-orange-500 to-rose-500 bg-clip-text text-transparent">
-              Yuva Arıyorum
+              Bilgileri
             </span>
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-base text-gray-500">
-            Sokakta bulduğunuz veya geçici olarak baktığınız bir hayvan için ilan oluşturun. Detaylı bilgi, sahiplenme şansını artırır.
+            İlanınızla ilgili değişiklikleri buradan yapabilirsiniz. Fotoğraf eklemezseniz eski fotoğraflar silinecektir.
           </p>
         </div>
 
@@ -613,7 +713,12 @@ export default function CreateListingPage() {
               </div>
             </div>
 
-            <ImageUploadDropzone onFilesChange={setImages} maxFiles={5} />
+            <ImageUploadDropzone 
+              initialImages={initialImages} 
+              onFilesChange={setImages} 
+              onKeptImagesChange={setKeptImages}
+              maxFiles={5} 
+            />
             {imageError && (
               <p className="mt-2 flex items-center gap-1 text-xs font-medium text-red-500">
                 <AlertCircle className="h-3 w-3" /> {imageError}
@@ -646,7 +751,7 @@ export default function CreateListingPage() {
               ) : (
                 <>
                   <Send className="h-4 w-4" />
-                  İlanı Yayınla
+                  Değişiklikleri Kaydet
                 </>
               )}
             </button>

@@ -161,6 +161,7 @@ model Pet {
   description        String?
   healthSummary      String?
   vaccinationSummary String?
+  isVaccinated       Boolean     @default(false)
   isNeutered         Boolean     @default(false)
   specialNeedsNote   String?
   temperament        String?
@@ -185,8 +186,6 @@ model PetPost {
   cityId           String
   district         String?
   addressNote      String?
-  latitude         Decimal?          @db.Decimal(9, 6)
-  longitude        Decimal?          @db.Decimal(9, 6)
   status           PostStatus        @default(DRAFT)
   isUrgent         Boolean           @default(false)
   viewCount        Int               @default(0)
