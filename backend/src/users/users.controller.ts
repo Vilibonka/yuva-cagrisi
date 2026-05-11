@@ -13,6 +13,8 @@ const storage = diskStorage({
     },
 });
 
+import { UpdateUserDto } from './dto/update-user.dto';
+
 @Controller('users')
 @UseGuards(JwtAuthGuard)
 export class UsersController {
@@ -24,7 +26,7 @@ export class UsersController {
     }
 
     @Patch('me')
-    async updateProfile(@Req() req: any, @Body() body: any) {
+    async updateProfile(@Req() req: any, @Body() body: UpdateUserDto) {
         return this.usersService.updateProfile(req.user.id, {
             fullName: body.fullName,
             contactPhone: body.contactPhone,

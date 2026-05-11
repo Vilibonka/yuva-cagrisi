@@ -1,22 +1,16 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, Matches, MaxLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MaxLength, Matches, IsBoolean } from 'class-validator';
 
-export class RegisterDto {
+export class UpdateUserDto {
     @IsString()
-    @IsNotEmpty({ message: 'Ad Soyad boş bırakılamaz' })
+    @IsOptional()
     @Matches(/^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/, { message: 'Ad Soyad sadece harflerden oluşmalıdır ve emoji/özel karakter içeremez' })
     @MaxLength(100)
-    fullName!: string;
+    fullName?: string;
 
     @IsEmail({}, { message: 'Geçerli bir e-posta adresi giriniz' })
-    @IsNotEmpty({ message: 'E-posta boş bırakılamaz' })
+    @IsOptional()
     @MaxLength(255)
-    email!: string;
-
-    @IsString()
-    @IsNotEmpty({ message: 'Şifre boş bırakılamaz' })
-    @MinLength(6, { message: 'Şifre en az 6 karakter olmalıdır' })
-    @MaxLength(100)
-    password!: string;
+    email?: string;
 
     @IsString()
     @IsOptional()
@@ -41,4 +35,12 @@ export class RegisterDto {
     @IsString()
     @IsOptional()
     profileImageUrl?: string;
+
+    @IsBoolean()
+    @IsOptional()
+    showReadReceipts?: boolean;
+
+    @IsBoolean()
+    @IsOptional()
+    showLastSeen?: boolean;
 }

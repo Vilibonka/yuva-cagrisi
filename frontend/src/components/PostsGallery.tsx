@@ -380,11 +380,20 @@ export default function PostsGallery() {
                         )}
                       </div>
 
-                      {/* Species badge */}
-                      <div className="absolute bottom-3 left-3">
+                      {/* Species & Age badges */}
+                      <div className="absolute bottom-3 left-3 flex gap-1.5">
                         <span className="rounded-xl bg-white/90 px-2.5 py-1 text-xs font-bold text-gray-800 shadow-sm backdrop-blur-sm">
                           {speciesEmojis[species]} {speciesLabels[species] ?? species}
                         </span>
+                        {post.pet?.estimatedAgeMonths && (
+                          <span className="rounded-xl bg-white/90 px-2.5 py-1 text-xs font-bold text-teal-700 shadow-sm backdrop-blur-sm">
+                            {
+                              post.pet.estimatedAgeMonths <= 3 ? 'Bebek' :
+                              post.pet.estimatedAgeMonths <= 12 ? 'Genç' :
+                              post.pet.estimatedAgeMonths <= 48 ? 'Yetişkin' : 'Yaşlı'
+                            }
+                          </span>
+                        )}
                       </div>
 
                       {/* Time badge */}

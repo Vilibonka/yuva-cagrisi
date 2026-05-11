@@ -26,7 +26,7 @@ const listingSchema = z.object({
     message: "Lütfen bir ilan türü seçin.",
   }),
   name: z.string().optional(),
-  species: z.enum(["Dog", "Cat", "Bird", "Other"], {
+  species: z.enum(["Dog", "Cat", "Bird", "Rabbit", "Other"], {
     message: "Lütfen bir tür seçin.",
   }),
   breed: z.string().optional(),
@@ -119,10 +119,11 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
         }
 
         // Map Species
-        let mappedSpecies: "Dog" | "Cat" | "Bird" | "Other" = "Other";
+        let mappedSpecies: "Dog" | "Cat" | "Bird" | "Rabbit" | "Other" = "Other";
         if (pet.species === "DOG") mappedSpecies = "Dog";
         else if (pet.species === "CAT") mappedSpecies = "Cat";
         else if (pet.species === "BIRD") mappedSpecies = "Bird";
+        else if (pet.species === "RABBIT") mappedSpecies = "Rabbit";
 
         // Map Gender
         let mappedGender: "Male" | "Female" | "Unknown" = "Unknown";
@@ -366,6 +367,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
                   <option value="Dog">🐕 Köpek</option>
                   <option value="Cat">🐈 Kedi</option>
                   <option value="Bird">🐦 Kuş</option>
+                  <option value="Rabbit">🐇 Tavşan</option>
                   <option value="Other">🐾 Diğer</option>
                 </select>
                 {errors.species && (

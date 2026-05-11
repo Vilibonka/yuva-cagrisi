@@ -26,7 +26,7 @@ const listingSchema = z.object({
     message: "Lütfen bir ilan türü seçin.",
   }),
   name: z.string().optional(),
-  species: z.enum(["Dog", "Cat", "Bird", "Other"], {
+  species: z.enum(["Dog", "Cat", "Bird", "Rabbit", "Other"], {
     message: "Lütfen bir tür seçin.",
   }),
   breed: z.string().optional(),
@@ -117,17 +117,11 @@ export default function CreateListingPage() {
       if (data.isVaccinated) healthInfo.push("Aşılı");
       if (data.isNeutered) healthInfo.push("Kısırlaştırılmış");
       if (data.isUrgent) healthInfo.push("ACİL DURUM / TIBBİ İHTİYAÇ!");
-      const healthSummary =
-        healthInfo.length > 0 ? healthInfo.join(", ") : "Belirtilmedi";
+      const healthSummary = healthInfo.length > 0 ? healthInfo.join(", ") : "Belirtilmedi";
 
       const title = data.name
         ? `${data.city} - Yuva arayan ${data.name}`
-        : `${data.city} - Yuva arayan ${data.species === "Dog"
-          ? "Köpek"
-          : data.species === "Cat"
-            ? "Kedi"
-            : "Dost"
-        }`;
+        : `${data.city} - Yuva arayan ${data.species === "Dog" ? "Köpek" : data.species === "Cat" ? "Kedi" : "Dost"}`;
 
       formData.append("species", mappedSpecies);
       formData.append("gender", mappedGender);
@@ -156,13 +150,12 @@ export default function CreateListingPage() {
       });
 
       await api.post("/pet-posts", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
+      window.scrollTo(0, 0);
       toast.success("İlan başarıyla oluşturuldu! 🎉", {
-        duration: 4000,
+        duration: 3000,
         style: {
           borderRadius: "12px",
           background: "#065f46",
@@ -170,12 +163,18 @@ export default function CreateListingPage() {
           fontWeight: 600,
         },
       });
-      reset();
+
+      // Clear images immediately to help with performance
       setImages([]);
-      setTimeout(() => router.push("/posts"), 1500);
+      
+      // Redirect to posts gallery using full page reload to avoid cache/hang issues
+      setTimeout(() => {
+        window.location.assign("/posts");
+      }, 2000);
+      
     } catch (error: unknown) {
+      console.error("Post creation failed:", error);
       toast.error(getApiErrorMessage(error, "İlan oluşturulurken bir hata oluştu."));
-    } finally {
       setIsLoading(false);
     }
   };
@@ -186,7 +185,6 @@ export default function CreateListingPage() {
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-gradient-to-br from-orange-200/40 to-rose-200/20 blur-3xl pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-gradient-to-tl from-blue-200/40 to-violet-200/20 blur-3xl pointer-events-none" />
       
-      <Toaster position="top-right" />
       <div className="relative max-w-3xl mx-auto z-10">
         {/* Header */}
         <div className="mb-8 text-center">
@@ -266,6 +264,7 @@ export default function CreateListingPage() {
                   <option value="Dog">🐕 Köpek</option>
                   <option value="Cat">🐈 Kedi</option>
                   <option value="Bird">🐦 Kuş</option>
+                  <option value="Rabbit">🐇 Tavşan</option>
                   <option value="Other">🐾 Diğer</option>
                 </select>
                 {errors.species && (

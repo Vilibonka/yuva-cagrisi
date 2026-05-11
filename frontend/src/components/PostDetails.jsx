@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   AlertTriangle, Bone, CheckCircle2, Info, MapPin,
   MessageSquare, Phone, User, XCircle, Clock3, PawPrint, Shield,
-  ChevronLeft, Loader2, Calendar,
+  ChevronLeft, Loader2, Calendar, Heart, Home, ChevronDown, FileText, AlertCircle, Users,
 } from 'lucide-react';
 import api, { buildMediaUrl } from '@/api';
 import RequestStatusBadge from '@/components/RequestStatusBadge';
@@ -25,11 +25,44 @@ function getPrimaryImage(post) {
   return post?.images?.find((image) => image.isPrimary) || post?.images?.[0] || null;
 }
 
-function RequestFact({ label, value }) {
+function PetFactItem({ icon, label, value, color }) {
   return (
-    <div className="rounded-xl bg-white p-3.5 ring-1 ring-gray-100 text-sm">
-      <div className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1">{label}</div>
-      <div className="font-semibold text-gray-800">{value || '-'}</div>
+    <div className={`flex items-center gap-3 p-3 rounded-2xl border border-gray-100 ${color || 'bg-gray-50'}`}>
+      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white shadow-sm shrink-0">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider truncate">{label}</p>
+        <p className="text-xs font-black text-gray-800 truncate">{value || '-'}</p>
+      </div>
+    </div>
+  );
+}
+
+function RequestFact({ icon, label, value }) {
+  return (
+    <div className="flex items-center gap-4 p-4 rounded-2xl bg-white ring-1 ring-gray-100 transition-all hover:ring-orange-200 group">
+      <div className="h-10 w-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest truncate">{label}</p>
+        <p className="text-sm font-black text-gray-800 truncate">{value || '-'}</p>
+      </div>
+    </div>
+  );
+}
+
+function SidebarSpec({ icon, label, value }) {
+  return (
+    <div className="flex items-center justify-between py-4 group">
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-lg bg-gray-50 text-gray-400 group-hover:bg-orange-50 group-hover:text-orange-500 transition-colors">
+          {icon}
+        </div>
+        <span className="text-sm font-bold text-gray-400">{label}</span>
+      </div>
+      <span className="text-sm font-black text-gray-800 tracking-tight">{value}</span>
     </div>
   );
 }
@@ -37,6 +70,7 @@ function RequestFact({ label, value }) {
 const speciesMap = { DOG: '🐕 Köpek', CAT: '🐈 Kedi', BIRD: '🐦 Kuş', RABBIT: '🐇 Tavşan', OTHER: '🐾 Diğer' };
 const genderMap = { MALE: 'Erkek', FEMALE: 'Dişi' };
 const sizeMap = { SMALL: 'Küçük', MEDIUM: 'Orta', LARGE: 'Büyük' };
+const housingTypeMap = { DETACHED: 'Müstakil', APARTMENT: 'Apartman', OTHER: 'Diğer' };
 const statusLabel = { ACTIVE: 'Aktif', ADOPTED: 'Sahiplendirildi', CLOSED: 'Kapatıldı' };
 const statusColor = { ACTIVE: 'bg-emerald-50 text-emerald-700 ring-emerald-200', ADOPTED: 'bg-blue-50 text-blue-700 ring-blue-200', CLOSED: 'bg-gray-100 text-gray-600 ring-gray-200' };
 
@@ -56,6 +90,7 @@ export default function PostDetails() {
   const [updatingPostStatus, setUpdatingPostStatus] = useState(false);
   const [reviewingRequestId, setReviewingRequestId] = useState(null);
   const [pageError, setPageError] = useState(null);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [actionError, setActionError] = useState(null);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [showChat, setShowChat] = useState(false);
@@ -77,14 +112,14 @@ export default function PostDetails() {
   }, []);
 
   useEffect(() => {
-    if (!currentUser?.phone) {
+    if (!currentUser?.contactPhone) {
       return;
     }
 
     setFormState((previous) => (
       previous.contactPhone
         ? previous
-        : { ...previous, contactPhone: currentUser.phone }
+        : { ...previous, contactPhone: currentUser.contactPhone }
     ));
   }, [currentUser]);
 
@@ -274,9 +309,11 @@ export default function PostDetails() {
 
   if (!post) {
     return (
-      <div className="mx-auto w-full max-w-5xl rounded-2xl bg-white p-12 text-center shadow-sm">
-        <PawPrint className="mx-auto mb-3 w-10 h-10 text-gray-300" />
-        <p className="text-gray-500 font-medium">İlan bulunamadı.</p>
+      <div className="mx-auto w-full max-w-6xl rounded-3xl bg-white p-20 text-center shadow-xl ring-1 ring-gray-100 my-12">
+        <PawPrint className="mx-auto mb-6 w-16 h-16 text-gray-200 animate-bounce" />
+        <h2 className="text-2xl font-black text-gray-900">İlan Bulunamadı</h2>
+        <p className="mt-2 text-gray-500 font-medium italic">Aradığınız dostumuz başka bir yuvaya gitmiş olabilir.</p>
+        <button onClick={() => router.push('/')} className="mt-8 px-6 py-3 bg-orange-600 text-white font-bold rounded-2xl hover:bg-orange-700 transition-all">Galeriye Dön</button>
       </div>
     );
   }
@@ -286,379 +323,343 @@ export default function PostDetails() {
   const isOwner = Boolean(currentUser && currentUser.id === post.ownerUserId);
 
   return (
-    <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-2xl bg-white shadow-xl shadow-gray-200/50 ring-1 ring-gray-200/60 my-4">
-      {/* Top Bar */}
-      <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-white">
-        <button onClick={() => router.back()} className="flex items-center gap-2 text-sm font-semibold text-gray-500 transition hover:text-orange-600 rounded-xl px-3 py-2 hover:bg-gray-50">
-          <ChevronLeft className="h-4 w-4" /> Geri Dön
+    <div className="mx-auto w-full max-w-7xl px-4 py-8">
+      {/* Top Breadcrumb / Actions */}
+      <div className="flex items-center justify-between mb-6">
+        <button onClick={() => router.back()} className="group flex items-center gap-2 text-sm font-bold text-gray-500 transition hover:text-orange-600">
+          <div className="p-2 rounded-xl bg-white shadow-sm ring-1 ring-gray-100 group-hover:bg-orange-50 transition-colors">
+            <ChevronLeft className="h-4 w-4" />
+          </div>
+          Geri Dön
         </button>
-        <div className="flex items-center gap-3">
-          {!isOwner && (
-            <button 
-              onClick={() => {
-                if (!currentUser) { router.push('/login'); return; }
-                setIsReportOpen(true);
-              }} 
-              className="flex items-center gap-1.5 text-xs font-bold text-gray-400 transition hover:text-red-500 rounded-lg px-3 py-2 hover:bg-red-50"
-            >
-              <AlertTriangle className="h-3.5 w-3.5" /> Şikâyet Et
-            </button>
-          )}
-        </div>
+        {!isOwner && (
+          <button 
+            onClick={() => { if (!currentUser) { router.push('/login'); return; } setIsReportOpen(true); }} 
+            className="flex items-center gap-1.5 text-xs font-black text-gray-400 hover:text-red-500 transition-colors"
+          >
+            <AlertTriangle className="h-3.5 w-3.5" /> İlanı Bildir
+          </button>
+        )}
       </div>
 
-      <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
-        {/* Left: Image */}
-        <div className="relative bg-gray-100">
-          {imageUrl ? (
-            <div className="relative h-80 lg:h-full min-h-[400px] overflow-hidden">
-              <img src={imageUrl} alt={post.title} className="h-full w-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
-            </div>
-          ) : (
-            <div className="flex h-80 lg:h-full min-h-[400px] items-center justify-center bg-gray-50">
-              <div className="text-center">
-                <PawPrint className="mx-auto w-12 h-12 text-gray-300 mb-2" />
-                <p className="text-sm text-gray-400">Görsel eklenmemiş</p>
+      <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
+        {/* Left Column: Gallery & Description */}
+        <div className="space-y-8">
+          <div className="bg-white rounded-[2.5rem] p-6 shadow-2xl shadow-gray-200/40 ring-1 ring-gray-100 overflow-hidden">
+            <h1 className="text-3xl font-black text-gray-900 tracking-tight mb-6">{post.title}</h1>
+            
+            {/* Gallery Viewer */}
+            <div className="space-y-4">
+              <div className="relative aspect-[4/3] rounded-[2rem] bg-[#f8fafc] ring-1 ring-gray-100 overflow-hidden group">
+                 {!post.images || post.images.length === 0 ? (
+                    <div className="flex h-full items-center justify-center">
+                      <PawPrint className="w-20 h-20 text-gray-200" />
+                    </div>
+                 ) : (
+                    <>
+                      <img 
+                        src={buildMediaUrl(post.images[activeImageIndex].imageUrl)} 
+                        alt={post.title}
+                        className="h-full w-full object-contain"
+                      />
+                      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                         {post.images.length > 1 && (
+                            <>
+                              <button onClick={() => setActiveImageIndex(prev => prev === 0 ? post.images.length-1 : prev-1)} className="p-3 rounded-2xl bg-white/80 backdrop-blur-md shadow-xl hover:bg-white transition-all"><ChevronLeft className="w-6 h-6 text-gray-900" /></button>
+                              <button onClick={() => setActiveImageIndex(prev => prev === post.images.length-1 ? 0 : prev+1)} className="p-3 rounded-2xl bg-white/80 backdrop-blur-md shadow-xl hover:bg-white transition-all"><ChevronLeft className="w-6 h-6 text-gray-900 rotate-180" /></button>
+                            </>
+                         )}
+                      </div>
+                    </>
+                 )}
               </div>
-            </div>
-          )}
-          {/* Status Badge on Image */}
-          <div className={`absolute top-4 left-4 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold ring-1 ${statusColor[post.status] || 'bg-gray-100 text-gray-600 ring-gray-200'}`}>
-            {statusLabel[post.status] || post.status}
-          </div>
-          {/* Species Badge */}
-          <div className="absolute top-4 right-4 rounded-lg bg-white/90 backdrop-blur-sm px-3 py-1.5 text-xs font-bold text-gray-700 shadow-sm">
-            {speciesMap[post.pet?.species] || '🐾 Hayvan'}
-          </div>
-        </div>
-
-        {/* Right: Details */}
-        <div className="p-6 lg:p-8 space-y-5 overflow-y-auto max-h-[calc(100vh-160px)]">
-          {/* Title & Location */}
-          <div>
-            <h1 className="text-2xl font-extrabold text-gray-900 leading-tight">{post.title}</h1>
-            <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-gray-400">
-              <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {post.city}</span>
-              <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> {formatDate(post.createdAt)}</span>
+              
+              {/* Thumbnails Row */}
+              {post.images && post.images.length > 1 && (
+                <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+                  {post.images.map((img, idx) => (
+                    <button 
+                      key={img.id}
+                      onClick={() => setActiveImageIndex(idx)}
+                      className={`relative flex-shrink-0 w-24 aspect-[4/3] rounded-2xl overflow-hidden ring-2 transition-all ${activeImageIndex === idx ? 'ring-orange-500 scale-105 shadow-lg' : 'ring-transparent opacity-60 hover:opacity-100'}`}
+                    >
+                      <img src={buildMediaUrl(img.imageUrl)} className="w-full h-full object-cover" alt="thumbnail" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Pet Info Pills */}
-          <div className="flex flex-wrap gap-2">
-            {post.pet?.breed && (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-700">
-                <Bone className="w-3 h-3" /> {post.pet.breed}
-              </span>
-            )}
-            {post.pet?.gender && (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-purple-50 px-3 py-1.5 text-xs font-bold text-purple-700">
-                {genderMap[post.pet.gender] || post.pet.gender}
-              </span>
-            )}
-            {post.pet?.size && (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">
-                {sizeMap[post.pet.size] || post.pet.size}
-              </span>
-            )}
-            {post.pet?.estimatedAgeMonths && (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-teal-50 px-3 py-1.5 text-xs font-bold text-teal-700">
-                <Clock3 className="w-3 h-3" /> {post.pet.estimatedAgeMonths} aylık
-              </span>
-            )}
-          </div>
-
-          {/* Description */}
-          <div>
-            <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Info className="h-3.5 w-3.5 text-gray-400" /> Açıklama
-            </h4>
-            <p className="text-sm leading-relaxed text-gray-600">{post.description}</p>
+          {/* Description Card */}
+          <div className="bg-white rounded-[2.5rem] p-10 shadow-2xl shadow-gray-200/40 ring-1 ring-gray-100">
+            <h2 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-3">
+              <div className="w-1.5 h-8 bg-orange-500 rounded-full" /> İlan Detayları
+            </h2>
+            <div className="text-gray-600 leading-relaxed font-medium whitespace-pre-line text-lg">
+              {post.description}
+            </div>
           </div>
 
           {/* Health Summary */}
           {post.pet?.healthSummary && (
-            <div className="rounded-xl bg-emerald-50 p-3.5 ring-1 ring-emerald-100">
-              <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                <Shield className="h-3.5 w-3.5" /> Sağlık Durumu
-              </h4>
-              <p className="text-sm text-emerald-700">{post.pet.healthSummary}</p>
-            </div>
-          )}
-
-          {/* Owner Card */}
-          <div className="rounded-xl bg-gray-50 p-4 ring-1 ring-gray-100">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white text-sm font-bold">
-                {post.owner?.fullName?.charAt(0) || <User className="h-5 w-5" />}
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400">İlan Sahibi</p>
-                <p className="text-sm font-bold text-gray-800">{post.owner?.fullName || 'Bilinmiyor'}</p>
+            <div className="bg-emerald-50 rounded-[2.5rem] p-10 ring-1 ring-emerald-100 relative overflow-hidden group">
+              <Shield className="absolute -right-10 -top-10 w-40 h-40 text-emerald-100/50 -rotate-12 transition-transform group-hover:rotate-0" />
+              <div className="relative">
+                <h2 className="text-xl font-black text-emerald-900 mb-4 flex items-center gap-3">
+                  <div className="w-1.5 h-8 bg-emerald-500 rounded-full" /> Sağlık Bilgileri
+                </h2>
+                <p className="text-emerald-800/80 font-bold text-lg leading-relaxed">{post.pet.healthSummary}</p>
               </div>
             </div>
-          </div>
-
-          {actionError && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {actionError}
-            </div>
           )}
+        </div>
 
+        {/* Right Column: Sidebar Specs & Actions */}
+        <div className="space-y-8">
+           {/* Price/Status Highlight */}
+           <div className="bg-gradient-to-br from-orange-500 to-rose-600 rounded-[2.5rem] p-8 text-white shadow-xl shadow-orange-200 overflow-hidden relative">
+              <div className="relative z-10">
+                <div className="text-[10px] font-black uppercase tracking-[0.3em] opacity-80 mb-2">İlan Durumu</div>
+                <div className="text-3xl font-black tracking-tight">{statusLabel[post.status] || post.status}</div>
+                <div className="mt-4 flex items-center gap-2 bg-white/20 backdrop-blur-md rounded-2xl px-4 py-2 w-fit">
+                   <div className={`w-2 h-2 rounded-full animate-pulse ${post.status === 'ACTIVE' ? 'bg-emerald-400' : 'bg-white'}`} />
+                   <span className="text-xs font-black uppercase tracking-wider">{speciesMap[post.pet?.species] || 'Hayvan'}</span>
+                </div>
+              </div>
+              <PawPrint className="absolute -right-8 -bottom-8 w-40 h-40 text-white/10 -rotate-12" />
+           </div>
+
+           {/* Specs Grid */}
+           <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl shadow-gray-200/40 ring-1 ring-gray-100 space-y-6">
+              <h3 className="text-sm font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Özellikler</h3>
+              <div className="divide-y divide-gray-50">
+                 <SidebarSpec label="Konum" value={post.city} icon={<MapPin className="w-4 h-4" />} />
+                 <SidebarSpec label="Irk" value={post.pet?.breed || 'Belirtilmedi'} icon={<Bone className="w-4 h-4" />} />
+                 <SidebarSpec label="Cinsiyet" value={genderMap[post.pet?.gender]} icon={<User className="w-4 h-4" />} />
+                 <SidebarSpec label="Boyut" value={sizeMap[post.pet?.size]} icon={<Shield className="w-4 h-4" />} />
+                 <SidebarSpec label="Yaş Grubu" value={
+                    post.pet?.estimatedAgeMonths ? (
+                      post.pet.estimatedAgeMonths <= 3 ? 'Bebek' :
+                      post.pet.estimatedAgeMonths <= 12 ? 'Genç' :
+                      post.pet.estimatedAgeMonths <= 48 ? 'Yetişkin' : 'Yaşlı'
+                    ) : 'Bilinmiyor'
+                 } icon={<Clock3 className="w-4 h-4" />} />
+                 <SidebarSpec label="İlan Tarihi" value={formatDate(post.createdAt)} icon={<Calendar className="w-4 h-4" />} />
+              </div>
+           </div>
+
+           {/* Owner Card */}
+           <div className="bg-gray-50 rounded-[2.5rem] p-8 ring-1 ring-gray-100">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-orange-400 to-rose-500 text-white flex items-center justify-center text-xl font-black shadow-lg">
+                  {post.owner?.fullName?.charAt(0) || '?'}
+                </div>
+                <div>
+                  <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">İlan Sahibi</div>
+                  <div className="text-lg font-black text-gray-800">{post.owner?.fullName || 'Bilinmiyor'}</div>
+                </div>
+              </div>
+
+              {!isOwner ? (
+                <div className="space-y-3">
+                  <button 
+                    disabled={loadingChat}
+                    onClick={async () => {
+                      if (!currentUser) { router.push('/login'); return; }
+                      setLoadingChat(true);
+                      try {
+                        const res = await api.post('/conversations', { targetUserId: post.ownerUserId, postId: post.id });
+                        router.push(`/messages?conversationId=${res.data.id}`);
+                      } catch (err) {
+                        const message = err.response?.data?.message;
+                        setActionError(Array.isArray(message) ? message.join(', ') : message || 'Sohbet başlatılamadı.');
+                      } finally { setLoadingChat(false); }
+                    }}
+                    className="w-full flex items-center justify-center gap-3 bg-gray-900 text-white py-4 rounded-[1.25rem] font-black transition-all hover:bg-black hover:-translate-y-1 active:scale-95 shadow-xl shadow-gray-200 disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {loadingChat ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageSquare className="w-5 h-5" />}
+                    {loadingChat ? 'Bağlanıyor...' : 'İletişime Geç'}
+                  </button>
+
+                  <button 
+                    onClick={() => {
+                      const el = document.getElementById('application-section');
+                      el?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="w-full flex items-center justify-center gap-3 bg-white text-orange-600 border-2 border-orange-100 py-3.5 rounded-[1.25rem] font-black transition-all hover:bg-orange-50 active:scale-95"
+                  >
+                    <Heart className="w-4 h-4" /> Sahiplenme Başvurusu Yap
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center p-4 bg-white rounded-2xl border border-gray-100">
+                   <p className="text-xs font-bold text-gray-400">Bu sizin ilanınızdır.</p>
+                </div>
+              )}
+           </div>
+
+           <div className="p-6 rounded-[2.5rem] bg-orange-50 border border-orange-100 text-center">
+              <p className="text-xs font-bold text-orange-700 italic">"Bir yuva açarak bir hayat kurtarın. Onların size, sizin onlara ihtiyacı var."</p>
+           </div>
+        </div>
+      </div>
+
+      {/* Application / Requests Area (Scroll Target) */}
+      <div id="application-section" className="mt-12">
+        <div className="max-w-4xl mx-auto">
           {isOwner ? (
-              <div className="space-y-4">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <button
-                    onClick={() => handlePostStatusUpdate('ADOPTED')}
-                    disabled={updatingPostStatus || post.status !== 'ACTIVE'}
-                    className="rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:from-emerald-600 hover:to-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 shadow-sm"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4" /> Sahiplendirildi
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => handlePostStatusUpdate('CLOSED')}
-                    disabled={updatingPostStatus || post.status !== 'ACTIVE'}
-                    className="rounded-xl bg-gray-800 px-4 py-3 text-sm font-bold text-white transition hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-50 shadow-sm"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <XCircle className="h-4 w-4" /> İlanı Kapat
-                    </span>
-                  </button>
-                </div>
-
-                <div className="rounded-xl bg-gray-50 p-4 ring-1 ring-gray-100">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900">Gelen Başvurular</h3>
-                      <p className="mt-0.5 text-xs text-gray-400">Bu ilana gelen tüm sahiplenme taleplerini yönetin.</p>
-                    </div>
-                    <div className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-gray-700 ring-1 ring-gray-200">
-                      {ownerRequests.length} başvuru
-                    </div>
+            <div className="space-y-8">
+              <div className="bg-white rounded-[2.5rem] p-8 shadow-xl ring-1 ring-gray-100">
+                <div className="flex items-center justify-between gap-4 mb-8">
+                  <div>
+                    <h3 className="text-2xl font-black text-gray-900 tracking-tight">Gelen Başvurular</h3>
+                    <p className="mt-1 text-sm font-medium text-gray-400">Bu ilana gelen tüm sahiplenme talepleri.</p>
+                  </div>
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-600 text-white font-black shadow-lg shadow-orange-200">
+                    {ownerRequests.length}
                   </div>
                 </div>
 
-                {loadingRequests ? (
-                  <div className="rounded-2xl bg-gray-50 p-6 text-sm text-gray-500">Basvurular yukleniyor...</div>
-                ) : ownerRequests.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
-                    Bu ilana henuz basvuru gelmedi.
-                  </div>
-                ) : (
-                  ownerRequests.map((request) => (
-                    <div key={request.id} className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
-                      <div className="flex flex-col gap-4 border-b border-gray-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <div className="mb-1 text-xs uppercase tracking-wide text-gray-400">Basvuran Kullanici</div>
-                          <div className="text-xl font-bold text-gray-900">{request.applicant?.fullName || 'Bilinmiyor'}</div>
-                          <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-500">
-                            <span className="inline-flex items-center gap-2">
-                              <Phone className="h-4 w-4" />
-                              {request.contactPhone || request.applicant?.phone || '-'}
-                            </span>
-                            <span>{request.applicant?.email || '-'}</span>
+                <div className="grid gap-6">
+                  {loadingRequests ? (
+                    <div className="flex items-center justify-center p-12 text-gray-400 font-bold">
+                      <Loader2 className="w-6 h-6 animate-spin mr-3" /> Başvurular yükleniyor...
+                    </div>
+                  ) : ownerRequests.length === 0 ? (
+                    <div className="rounded-[2rem] border-2 border-dashed border-gray-100 p-16 text-center text-gray-400">
+                      <PawPrint className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                      <p className="font-bold text-sm">Henüz başvuru gelmedi.</p>
+                    </div>
+                  ) : (
+                    ownerRequests.map((request) => (
+                      <div key={request.id} className="group overflow-hidden rounded-[2rem] border border-gray-100 bg-gray-50/50 p-8 transition-all hover:bg-white hover:shadow-2xl hover:shadow-orange-100/20">
+                        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between border-b border-gray-100 pb-6">
+                          <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center font-black">
+                              {request.applicant?.fullName?.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="text-lg font-black text-gray-900">{request.applicant?.fullName}</div>
+                              <div className="flex gap-4 mt-1">
+                                <span className="text-xs font-bold text-gray-400 flex items-center gap-1"><Phone className="w-3 h-3" /> {request.applicant?.contactPhone}</span>
+                                <span className="text-xs font-bold text-gray-400 flex items-center gap-1"><MessageSquare className="w-3 h-3" /> {request.applicant?.email}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <RequestStatusBadge status={request.status} />
+                        </div>
+
+                        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                          <div className="space-y-2">
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Başvuru Mesajı</p>
+                            <p className="text-sm font-medium text-gray-700 leading-relaxed italic">"{request.message}"</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="p-4 rounded-2xl bg-white border border-gray-100">
+                              <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Konut</p>
+                              <p className="text-xs font-black text-gray-800">{housingTypeMap[request.housingType]}</p>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-white border border-gray-100">
+                              <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Deneyim</p>
+                              <p className="text-xs font-black text-gray-800">{request.experienceWithPets ? 'Var' : 'Yok'}</p>
+                            </div>
                           </div>
                         </div>
-                        <RequestStatusBadge status={request.status} />
-                      </div>
 
-                      <div className="mt-4 grid gap-4 md:grid-cols-2">
-                        <RequestFact label="Mesaj" value={request.message} />
-                        <RequestFact label="Konut tipi" value={request.housingType} />
-                        <RequestFact label="Diger evcil hayvan" value={request.hasOtherPets ? 'Var' : 'Yok'} />
-                        <RequestFact label="Cocuk bulunan ev" value={request.hasChildren ? 'Evet' : 'Hayir'} />
-                        <RequestFact label="Hayvan deneyimi" value={request.experienceWithPets} />
-                        <RequestFact label="Neden sahiplenmek istiyor" value={request.whyAdopt} />
+                        {request.status === 'PENDING' && post.status === 'ACTIVE' && (
+                          <div className="mt-8 flex gap-4">
+                            <button onClick={() => handleReview(request.id, 'APPROVED')} className="flex-1 bg-emerald-600 text-white py-3.5 rounded-2xl font-black text-sm transition-all hover:bg-emerald-700 hover:-translate-y-0.5 active:scale-95 shadow-lg shadow-emerald-100">Onayla</button>
+                            <button onClick={() => handleReview(request.id, 'REJECTED')} className="flex-1 bg-gray-100 text-gray-600 py-3.5 rounded-2xl font-black text-sm transition-all hover:bg-gray-200 active:scale-95">Reddet</button>
+                          </div>
+                        )}
                       </div>
-
-                      <div className="mt-4">
-                        <div className="mb-3 text-sm font-semibold text-gray-800">Durum gecmisi</div>
-                        <RequestStatusTimeline history={request.statusHistory} />
-                      </div>
-
-                      {request.status === 'PENDING' && post.status === 'ACTIVE' && (
-                        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-                          <button
-                            onClick={() => handleReview(request.id, 'APPROVED')}
-                            disabled={reviewingRequestId === request.id}
-                            className="flex-1 rounded-2xl bg-emerald-600 px-4 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
-                          >
-                            <span className="inline-flex items-center gap-2">
-                              <CheckCircle2 className="h-5 w-5" /> Onayla
-                            </span>
-                          </button>
-                          <button
-                            onClick={() => handleReview(request.id, 'REJECTED')}
-                            disabled={reviewingRequestId === request.id}
-                            className="flex-1 rounded-2xl bg-rose-600 px-4 py-3 font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-rose-300"
-                          >
-                            <span className="inline-flex items-center gap-2">
-                              <XCircle className="h-5 w-5" /> Reddet
-                            </span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
+                    ))
+                  )}
+                </div>
               </div>
-            ) : (
-              <div className="space-y-5">
-                {!authResolved ? (
-                  <div className="rounded-3xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
-                    Oturum bilgileriniz kontrol ediliyor...
-                  </div>
-                ) : !currentUser ? (
-                  <div className="rounded-3xl border border-gray-200 bg-gray-50 p-6">
-                    <h3 className="text-lg font-bold text-gray-900">Sahiplenme Basvurusu</h3>
-                    <p className="mt-2 text-sm leading-6 text-gray-600">
-                      Bu ilana basvuru yapabilmek icin once giris yapmaniz gerekiyor.
-                    </p>
-                    <button
-                      onClick={() => router.push('/login')}
-                      className="mt-4 rounded-full bg-orange-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-700"
-                    >
-                      Giris Yap ve Basvur
-                    </button>
-                  </div>
-                ) : loadingRequests && !myRequest ? (
-                  <div className="rounded-3xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
-                    Basvuru bilgileriniz yukleniyor...
-                  </div>
-                ) : myRequest ? (
-                  <div className="space-y-4 rounded-3xl border border-gray-200 bg-gray-50 p-6">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-900">Basvuru Durumunuz</h3>
-                        <p className="mt-1 text-sm text-gray-500">Bu ilana ait mevcut sahiplenme basvurunuz asagida gosteriliyor.</p>
-                      </div>
-                      <RequestStatusBadge status={myRequest.status} />
-                    </div>
-
-                    <div className="rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-600">
-                      <div className="font-semibold text-gray-800">Mesajiniz</div>
-                      <p className="mt-2 leading-6">{myRequest.message}</p>
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <RequestFact label="Konut tipi" value={myRequest.housingType} />
-                      <RequestFact label="Diger evcil hayvan" value={myRequest.hasOtherPets ? 'Var' : 'Yok'} />
-                      <RequestFact label="Cocuk bulunan ev" value={myRequest.hasChildren ? 'Evet' : 'Hayir'} />
-                      <RequestFact label="Iletisim telefonu" value={myRequest.contactPhone} />
-                    </div>
-
-                    <div>
-                      <div className="mb-3 text-sm font-semibold text-gray-800">Durum gecmisi</div>
-                      {loadingRequests ? (
-                        <div className="rounded-2xl bg-white p-4 text-sm text-gray-500">Basvuru gecmisi yukleniyor...</div>
-                      ) : (
-                        <RequestStatusTimeline history={myRequest.statusHistory} />
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <form onSubmit={handleApply} className="space-y-4 rounded-3xl border border-gray-200 bg-gray-50 p-6">
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900">Sahiplenme Basvurusu</h3>
-                      <p className="mt-1 text-sm text-gray-500">Kendinizi kisaca tanitin ve dostumuz icin neden uygun bir yuva oldugunuzu anlatin.</p>
-                    </div>
-
-                    {post.status !== 'ACTIVE' && (
-                      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-                        Bu ilan su anda yeni basvuru kabul etmiyor.
-                      </div>
-                    )}
-
-                    <textarea
-                      required
-                      name="message"
-                      value={formState.message}
-                      onChange={handleFormChange}
-                      rows="4"
-                      className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
-                      placeholder="Kendinizi ve neden sahiplenmek istediginizi anlatin."
-                    />
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <input
-                        name="housingType"
-                        value={formState.housingType}
-                        onChange={handleFormChange}
-                        className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-orange-500"
-                        placeholder="Konut tipi"
-                      />
-                      <input
-                        name="contactPhone"
-                        value={formState.contactPhone}
-                        onChange={handleFormChange}
-                        className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-orange-500"
-                        placeholder="Iletisim telefonu"
-                      />
-                    </div>
-
-                    <textarea
-                      name="experienceWithPets"
-                      value={formState.experienceWithPets}
-                      onChange={handleFormChange}
-                      rows="3"
-                      className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-orange-500"
-                      placeholder="Daha once hayvan bakimi deneyiminiz varsa yazin."
-                    />
-
-                    <textarea
-                      name="whyAdopt"
-                      value={formState.whyAdopt}
-                      onChange={handleFormChange}
-                      rows="3"
-                      className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-orange-500"
-                      placeholder="Bu dostu neden sahiplenmek istediginizi yazin."
-                    />
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <label className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
-                        <input type="checkbox" name="hasOtherPets" checked={formState.hasOtherPets} onChange={handleFormChange} className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500" />
-                        Diger evcil hayvanlarim var
-                      </label>
-                      <label className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
-                        <input type="checkbox" name="hasChildren" checked={formState.hasChildren} onChange={handleFormChange} className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500" />
-                        Cocuk bulunan bir evde yasiyorum
-                      </label>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={submittingRequest || post.status !== 'ACTIVE'}
-                      className="w-full rounded-2xl bg-orange-600 px-4 py-4 text-sm font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:bg-orange-300"
-                    >
-                      {submittingRequest ? 'Basvuru gonderiliyor...' : 'Basvuru Gonder'}
-                    </button>
-                  </form>
-                )}
-
-                <button
-                  disabled={loadingChat}
-                  onClick={async () => {
-                    if (!currentUser) { router.push('/login'); return; }
-                    setLoadingChat(true);
-                    try {
-                      const res = await api.post('/conversations', { targetUserId: post.ownerUserId, postId: post.id });
-                      router.push(`/messages?conversationId=${res.data.id}`);
-                    } catch (err) {
-                      const message = err.response?.data?.message;
-                      setActionError(Array.isArray(message) ? message.join(', ') : message || 'Sohbet başlatılamadı.');
-                    } finally { setLoadingChat(false); }
-                  }}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 py-3 text-sm font-bold text-white shadow-sm shadow-orange-200/40 transition hover:from-orange-600 hover:to-orange-700 disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  <MessageSquare className="h-4 w-4" /> 
-                  {loadingChat ? 'Bağlanıyor...' : 'Sahibi ile İletişime Geç'}
-                </button>
+            </div>
+          ) : myRequest ? (
+            <div className="bg-white rounded-[2.5rem] p-10 shadow-xl ring-1 ring-gray-100 overflow-hidden relative">
+              <div className="absolute top-0 right-0 p-8">
+                <RequestStatusBadge status={myRequest.status} />
               </div>
-            )}
-          </div>
+              <h3 className="text-2xl font-black text-gray-900 mb-2">Başvurunuz</h3>
+              <p className="text-sm font-medium text-gray-400 mb-8">Bu dostumuz için yaptığınız sahiplenme talebi.</p>
+
+              <div className="space-y-8">
+                <div className="p-6 rounded-3xl bg-gray-50 border border-gray-100 italic font-medium text-gray-600 leading-relaxed">
+                  "{myRequest.message}"
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <RequestFact icon={<Home className="w-4 h-4" />} label="Konut" value={housingTypeMap[myRequest.housingType]} />
+                  <RequestFact icon={<PawPrint className="w-4 h-4" />} label="Diğer Hayvan" value={myRequest.hasOtherPets ? 'Var' : 'Yok'} />
+                  <RequestFact icon={<Users className="w-4 h-4" />} label="Çocuk" value={myRequest.hasChildren ? 'Evet' : 'Hayır'} />
+                </div>
+
+                <div className="pt-6 border-t border-gray-100">
+                  <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">Süreç Takibi</p>
+                  <RequestStatusTimeline history={myRequest.statusHistory} />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleApply} className="bg-white rounded-[2.5rem] p-10 shadow-2xl shadow-orange-100/40 ring-2 ring-orange-500/10 relative overflow-hidden">
+              <div className="absolute -right-20 -top-20 w-64 h-64 bg-orange-50 rounded-full blur-3xl opacity-50" />
+
+              <div className="relative z-10">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-orange-100 text-orange-600 text-[10px] font-black uppercase tracking-widest mb-4">
+                  <Heart className="w-3.5 h-3.5 fill-current" /> Yeni Bir Başlangıç
+                </div>
+                <h3 className="text-3xl font-black text-gray-900 tracking-tight mb-2">Sahiplenme Başvurusu</h3>
+                <p className="text-gray-500 font-medium mb-10">Lütfen kendinizi ve bu dostumuza sunacağınız yuvayı kısaca anlatın.</p>
+
+                <div className="space-y-8">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Mesajınız</label>
+                    <textarea
+                      required name="message" value={formState.message} onChange={handleFormChange} rows="4"
+                      placeholder="Örn: Daha önce kedi baktım, geniş bir dairem var..."
+                      className="w-full bg-gray-50 border-none rounded-3xl p-6 text-gray-700 font-medium focus:ring-4 focus:ring-orange-100 transition-all outline-none"
+                    />
+                  </div>
+
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Konut Tipi</label>
+                      <select name="housingType" value={formState.housingType} onChange={handleFormChange} className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 text-sm font-black text-gray-700 focus:ring-4 focus:ring-orange-100 outline-none appearance-none">
+                        <option value="">Seçin</option>
+                        <option value="DETACHED">Müstakil / Bahçeli</option>
+                        <option value="APARTMENT">Apartman Dairesi</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Evcil Hayvan Deneyimi</label>
+                      <input name="experienceWithPets" value={formState.experienceWithPets} onChange={handleFormChange} className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 text-sm font-black text-gray-700 focus:ring-4 focus:ring-orange-100 outline-none" placeholder="Var / Yok / Detay..." />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <label className="flex-1 flex items-center justify-center gap-3 p-4 rounded-2xl bg-gray-50 cursor-pointer border-2 border-transparent transition-all hover:bg-orange-50 hover:border-orange-200 group">
+                      <input type="checkbox" name="hasOtherPets" checked={formState.hasOtherPets} onChange={handleFormChange} className="w-5 h-5 rounded-lg border-gray-300 text-orange-600 focus:ring-orange-500" />
+                      <span className="text-sm font-black text-gray-700 group-hover:text-orange-700">Başka Hayvan</span>
+                    </label>
+                    <label className="flex-1 flex items-center justify-center gap-3 p-4 rounded-2xl bg-gray-50 cursor-pointer border-2 border-transparent transition-all hover:bg-orange-50 hover:border-orange-200 group">
+                      <input type="checkbox" name="hasChildren" checked={formState.hasChildren} onChange={handleFormChange} className="w-5 h-5 rounded-lg border-gray-300 text-orange-600 focus:ring-orange-500" />
+                      <span className="text-sm font-black text-gray-700 group-hover:text-orange-700">Çocuklu Ev</span>
+                    </label>
+                  </div>
+
+                  <button type="submit" disabled={submittingRequest || post.status !== 'ACTIVE'} className="w-full bg-orange-600 text-white py-5 rounded-3xl font-black text-lg shadow-xl shadow-orange-200 transition-all hover:bg-orange-700 hover:-translate-y-1 active:scale-95 disabled:opacity-50 disabled:translate-y-0">
+                    {submittingRequest ? 'Gönderiliyor...' : 'Başvuruyu Tamamla'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          )}
         </div>
+      </div>
 
       <ReportModal postId={postId} isOpen={isReportOpen} onClose={() => setIsReportOpen(false)} />
     </div>
