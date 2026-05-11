@@ -49,6 +49,9 @@ export interface User {
   district?: string | null;
   biography?: string | null;
   profileImageUrl?: string | null;
+  lastSeenAt?: string | null;
+  showReadReceipts?: boolean;
+  showLastSeen?: boolean;
 }
 
 export interface AuthSession {
@@ -59,12 +62,18 @@ export interface AuthSession {
 
 export interface Pet {
   id?: string;
+  name?: string | null;
   species: Species;
   breed?: string | null;
   gender?: Gender | null;
   estimatedAgeMonths?: number | null;
   size?: AnimalSize | null;
+  color?: string | null;
   healthSummary?: string | null;
+  vaccinationSummary?: string | null;
+  isVaccinated?: boolean | null;
+  isNeutered?: boolean | null;
+  specialNeedsNote?: string | null;
   temperament?: string | null;
 }
 
@@ -82,6 +91,7 @@ export interface PetPost {
   postType: PostType;
   city: string;
   district?: string | null;
+  addressNote?: string | null;
   status?: PostStatus;
   isUrgent?: boolean;
   viewCount?: number | null;
@@ -146,7 +156,7 @@ export interface Message {
   content: string;
   status: MessageStatus;
   createdAt: string;
-  sender?: Pick<User, 'id' | 'fullName'>;
+  sender?: Pick<User, 'id' | 'fullName' | 'profileImageUrl'>;
 }
 
 export interface NotificationItem {

@@ -33,6 +33,7 @@ export default function RootLayout() {
               <Stack.Screen name="my-listings" options={{ title: 'İlanlarım' }} />
               <Stack.Screen name="profile-settings" options={{ title: 'Profil Ayarları' }} />
               <Stack.Screen name="notifications" options={{ title: 'Bildirimler' }} />
+              <Stack.Screen name="listings/edit/[id]" options={{ title: 'İlanı Düzenle' }} />
               <Stack.Screen name="post/[id]" options={{ title: 'İlan Detayı' }} />
               <Stack.Screen name="messages/[id]" options={{ title: 'Sohbet' }} />
             </Stack>

@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { AlertTriangle, CheckCircle2, Heart, MessageCircle, Send, X, XCircle } from 'lucide-react-native';
+import { AlertTriangle, CheckCircle2, Heart, MessageCircle, Pencil, Send, X, XCircle } from 'lucide-react-native';
 import { z } from 'zod';
 
 import { Badge, Button, ErrorState, Field, LoadingState, Section, colors } from '@/components/Design';
@@ -286,14 +286,22 @@ export default function PostDetailScreen() {
         </View>
         <Text style={styles.description}>{post.description}</Text>
         <View style={styles.metaGrid}>
+          <Meta label="Adı" value={post.pet?.name || '-'} />
           <Meta label="Şehir" value={post.city} />
+          <Meta label="İlçe" value={post.district || '-'} />
           <Meta label="Tür" value={post.pet?.species ? speciesLabels[post.pet.species] : '-'} />
           <Meta label="Cinsiyet" value={post.pet?.gender ? genderLabels[post.pet.gender] : '-'} />
           <Meta label="Boyut" value={post.pet?.size ? sizeLabels[post.pet.size] : '-'} />
           <Meta label="Yaş" value={post.pet?.estimatedAgeMonths ? `${post.pet.estimatedAgeMonths} ay` : '-'} />
           <Meta label="Irk" value={post.pet?.breed || '-'} />
+          <Meta label="Renk" value={post.pet?.color || '-'} />
+          <Meta label="Aşı" value={formatBoolean(post.pet?.isVaccinated)} />
+          <Meta label="Kısır" value={formatBoolean(post.pet?.isNeutered)} />
         </View>
+        {post.addressNote ? <Text style={styles.note}>Konum notu: {post.addressNote}</Text> : null}
         {post.pet?.healthSummary ? <Text style={styles.note}>Sağlık: {post.pet.healthSummary}</Text> : null}
+        {post.pet?.vaccinationSummary ? <Text style={styles.note}>Aşı bilgisi: {post.pet.vaccinationSummary}</Text> : null}
+        {post.pet?.specialNeedsNote ? <Text style={styles.note}>Özel ihtiyaç: {post.pet.specialNeedsNote}</Text> : null}
         {post.pet?.temperament ? <Text style={styles.note}>Karakter: {post.pet.temperament}</Text> : null}
       </Section>
 
@@ -314,6 +322,12 @@ export default function PostDetailScreen() {
         <>
           <Section title="İlan Yönetimi">
             <Text style={styles.description}>İlanın son durumunu ve gelen başvuruları buradan yönetebilirsin.</Text>
+            <Button
+              title="İlanı Düzenle"
+              variant="secondary"
+              icon={<Pencil color={colors.primaryDark} size={18} />}
+              onPress={() => router.push(`/listings/edit/${post.id}` as never)}
+            />
             <View style={styles.actionRow}>
               <Button
                 title="Sahiplendirildi"
@@ -473,6 +487,11 @@ function Meta({ label, value }: { label: string; value: string }) {
       <Text style={styles.metaValue}>{value}</Text>
     </View>
   );
+}
+
+function formatBoolean(value?: boolean | null) {
+  if (value == null) return '-';
+  return value ? 'Evet' : 'Hayır';
 }
 
 function RequestReviewCard({

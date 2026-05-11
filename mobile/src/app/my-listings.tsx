@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Clock3, Eye, Image as ImageIcon, MapPin, PlusSquare, Users } from 'lucide-react-native';
+import { Clock3, Eye, Image as ImageIcon, MapPin, Pencil, PlusSquare, Users } from 'lucide-react-native';
 
 import { Badge, Button, EmptyState, ErrorState, LoadingState, colors } from '@/components/Design';
 import { useAuth } from '@/context/AuthContext';
@@ -133,7 +133,7 @@ function ListingCard({ post }: { post: PetPost }) {
   const status = post.status || 'DRAFT';
 
   return (
-    <Pressable style={styles.card} onPress={() => router.push({ pathname: '/post/[id]', params: { id: post.id } })}>
+    <View style={styles.card}>
       <View style={styles.imageWrap}>
         {imageUrl ? (
           <Image source={{ uri: imageUrl }} style={styles.image} onError={() => setImageFailed(true)} />
@@ -161,8 +161,16 @@ function ListingCard({ post }: { post: PetPost }) {
           <Stat icon={<Eye color={colors.primaryDark} size={15} />} label={`${post.viewCount || 0} görüntülenme`} />
         </View>
         <Text style={styles.species}>{post.pet?.species ? speciesLabels[post.pet.species] : 'Dost'}</Text>
+        <View style={styles.cardActions}>
+          <Button title="Detay" variant="secondary" onPress={() => router.push({ pathname: '/post/[id]', params: { id: post.id } })} />
+          <Button
+            title="Düzenle"
+            icon={<Pencil color="#fff" size={16} />}
+            onPress={() => router.push(`/listings/edit/${post.id}` as never)}
+          />
+        </View>
       </View>
-    </Pressable>
+    </View>
   );
 }
 
@@ -221,6 +229,7 @@ const styles = StyleSheet.create({
   metaRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   metaText: { color: colors.muted, fontSize: 12, fontWeight: '700', marginRight: 6 },
   stats: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  cardActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 },
   stat: {
     alignItems: 'center',
     backgroundColor: '#fff4ed',
