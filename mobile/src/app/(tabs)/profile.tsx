@@ -1,10 +1,11 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Bell, Heart, ListChecks, LogOut, MessageSquare, Plus, Send, Settings, User } from 'lucide-react-native';
 
 import { Button, LoadingState, Section, colors } from '@/components/Design';
 import { useAuth } from '@/context/AuthContext';
+import { buildImageUrl } from '@/lib/config';
 
 export default function ProfileScreen() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
@@ -19,12 +20,13 @@ export default function ProfileScreen() {
     await logout();
     router.replace('/');
   };
+  const avatarUrl = buildImageUrl(user?.profileImageUrl);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Section>
         <View style={styles.avatar}>
-          <User color={colors.primary} size={32} />
+          {avatarUrl ? <Image source={{ uri: avatarUrl }} style={styles.avatarImage} /> : <User color={colors.primary} size={32} />}
         </View>
         <Text style={styles.name}>{user?.fullName}</Text>
         <Text style={styles.email}>{user?.email}</Text>
@@ -55,8 +57,10 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     height: 72,
     justifyContent: 'center',
+    overflow: 'hidden',
     width: 72,
   },
+  avatarImage: { height: '100%', width: '100%' },
   name: { color: colors.ink, fontSize: 24, fontWeight: '900', textAlign: 'center' },
   email: { color: colors.muted, fontSize: 14, fontWeight: '700', textAlign: 'center' },
   meta: { color: colors.muted, textAlign: 'center' },
