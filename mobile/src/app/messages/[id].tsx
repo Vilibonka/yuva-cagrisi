@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/hooks/useSocket';
 import api from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/errors';
-import { formatTime } from '@/lib/labels';
+import { formatTime, formatTimeAgo } from '@/lib/labels';
 import { BlockStatus, Conversation, Message, User } from '@/types';
 
 const defaultBlockStatus: BlockStatus = {
@@ -17,12 +17,19 @@ const defaultBlockStatus: BlockStatus = {
   blockedByThem: false,
 };
 
+interface UserPresence {
+  userId: string;
+  status: 'online' | 'offline';
+  lastSeenAt?: string | null;
+}
+
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const { socket, isConnected } = useSocket(!!id);
   const [messages, setMessages] = useState<Message[]>([]);
   const [otherUser, setOtherUser] = useState<User | null>(null);
+  const [presence, setPresence] = useState<UserPresence | null>(null);
   const [blockStatus, setBlockStatus] = useState<BlockStatus>(defaultBlockStatus);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(true);
@@ -48,6 +55,15 @@ export default function ChatScreen() {
 
     setMessages(nextMessages);
     setOtherUser(nextOtherUser || null);
+    setPresence(
+      nextOtherUser
+        ? {
+            userId: nextOtherUser.id,
+            status: 'offline',
+            lastSeenAt: nextOtherUser.showLastSeen === false ? null : nextOtherUser.lastSeenAt,
+          }
+        : null,
+    );
 
     if (nextOtherUser?.id) {
       await loadBlockStatus(nextOtherUser.id);
@@ -88,18 +104,47 @@ export default function ChatScreen() {
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
     };
 
+    const onUserStatus = (nextPresence: UserPresence) => {
+      if (nextPresence.userId === otherUser?.id) {
+        setPresence(nextPresence);
+      }
+    };
+
+    const onMessagesRead = (payload: { conversationId: string; userId: string }) => {
+      if (payload.conversationId !== id || payload.userId === user?.id) return;
+
+      setMessages((current) =>
+        current.map((message) =>
+          message.senderUserId === user?.id && message.status === 'SENT' ? { ...message, status: 'READ' } : message,
+        ),
+      );
+    };
+
     const onException = (error: { message?: string }) => {
       Alert.alert('Mesaj gönderilemedi', error?.message || 'Lütfen tekrar dene.');
       if (otherUser?.id) void loadBlockStatus(otherUser.id);
     };
 
     socket.on('newMessage', onMessage);
+    socket.on('userStatus', onUserStatus);
+    socket.on('messagesRead', onMessagesRead);
     socket.on('exception', onException);
+
+    if (otherUser?.id) {
+      socket.emit('getUserStatus', { userId: otherUser.id }, (nextPresence?: UserPresence) => {
+        if (nextPresence?.userId === otherUser.id) {
+          setPresence(nextPresence);
+        }
+      });
+    }
+
     return () => {
       socket.off('newMessage', onMessage);
+      socket.off('userStatus', onUserStatus);
+      socket.off('messagesRead', onMessagesRead);
       socket.off('exception', onException);
     };
-  }, [id, loadBlockStatus, otherUser?.id, socket]);
+  }, [id, loadBlockStatus, otherUser?.id, socket, user?.id]);
 
   const confirmDeleteMessage = (messageId: string) => {
     Alert.alert('Mesajı sil', 'Bu mesajı silmek istiyor musun?', [
@@ -182,6 +227,7 @@ export default function ChatScreen() {
         <View style={styles.statusTextWrap}>
           <Text style={[styles.statusText, isConnected && styles.statusOnline]}>{isConnected ? 'Canlı bağlantı açık' : 'Bağlantı bekleniyor'}</Text>
           {otherUser ? <Text style={styles.otherName}>{otherUser.fullName}</Text> : null}
+          {otherUser ? <Text style={styles.presenceText}>{formatPresence(presence)}</Text> : null}
         </View>
         {otherUser ? (
           blockStatus.blockedByMe ? (
@@ -226,7 +272,10 @@ export default function ChatScreen() {
                   {deleted ? 'Bu mesaj silindi' : item.content}
                 </Text>
               </Pressable>
-              <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
+              <Text style={styles.time}>
+                {formatTime(item.createdAt)}
+                {isMine && !deleted ? ` • ${item.status === 'READ' ? 'Okundu' : 'Gönderildi'}` : ''}
+              </Text>
             </View>
           );
         }}
@@ -260,6 +309,13 @@ function getBlockedMessage(blockStatus: BlockStatus) {
   return 'Bu kullanıcıyla iletişim engellenmiştir.';
 }
 
+function formatPresence(presence: UserPresence | null) {
+  if (!presence) return 'Durum bilgisi bekleniyor';
+  if (presence.status === 'online') return 'Çevrimiçi';
+  if (presence.lastSeenAt) return `Son görülme ${formatTimeAgo(presence.lastSeenAt)}`;
+  return 'Çevrimdışı';
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   status: {
@@ -273,6 +329,7 @@ const styles = StyleSheet.create({
   statusText: { color: colors.muted, fontSize: 12, fontWeight: '800' },
   statusOnline: { color: colors.success },
   otherName: { color: colors.ink, fontSize: 15, fontWeight: '900', marginTop: 2 },
+  presenceText: { color: colors.muted, fontSize: 12, fontWeight: '700', marginTop: 2 },
   headerAction: {
     alignItems: 'center',
     backgroundColor: '#fff4ed',
