@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const fullNamePattern = /^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/;
-export const phonePattern = /^[0-9\s\-+()]*$/;
+export const phonePattern = /^05\d{9}$/;
 
 export function emptyToUndefined(value?: string | null) {
   const trimmed = value?.trim();
@@ -34,6 +34,6 @@ export function emailField() {
 export function optionalPhoneField() {
   return z
     .string()
-    .refine((value) => value.trim().length <= 20, 'Telefon en fazla 20 karakter olabilir.')
-    .refine((value) => !value.trim() || phonePattern.test(value.trim()), 'Geçerli bir telefon numarası gir.');
+    .refine((value) => value.trim().length <= 11, 'Telefon 11 haneli olmalı.')
+    .refine((value) => !value.trim() || phonePattern.test(value.trim()), 'Telefon 05 ile başlamalı ve 11 haneli olmalı.');
 }

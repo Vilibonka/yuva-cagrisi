@@ -25,10 +25,17 @@ import { emptyToUndefined, optionalPhoneField, optionalTrimmedText, requiredTrim
 import { AdoptionRequest, PetPost, PostStatus, ReportReason, RequestStatus, SavedPost } from '@/types';
 
 const reportReasons = ['SPAM', 'INAPPROPRIATE', 'SCAM', 'OTHER'] as const satisfies readonly ReportReason[];
+const housingTypeOptions = ['', 'APARTMENT', 'DETACHED', 'OTHER'] as const;
+const housingTypeLabels: Record<(typeof housingTypeOptions)[number], string> = {
+  '': 'Belirtmek istemiyorum',
+  APARTMENT: 'Apartman',
+  DETACHED: 'Müstakil ev',
+  OTHER: 'Diğer',
+};
 
 const adoptionRequestSchema = z.object({
   message: requiredTrimmed('Başvuru mesajı', 1000).refine((value) => value.trim().length >= 10, 'Başvuru mesajı en az 10 karakter olmalı.'),
-  housingType: optionalTrimmedText('Konut tipi', 100),
+  housingType: z.enum(housingTypeOptions),
   contactPhone: optionalPhoneField(),
   hasOtherPets: z.boolean(),
   hasChildren: z.boolean(),
@@ -393,9 +400,7 @@ export default function PostDetailScreen() {
               <Controller
                 control={control}
                 name="housingType"
-                render={({ field: { onBlur, onChange, value } }) => (
-                  <Field label="Konut tipi" value={value} onBlur={onBlur} onChangeText={onChange} placeholder="Ev, apartman, bahçeli ev..." error={errors.housingType?.message} />
-                )}
+                render={({ field: { onChange, value } }) => <ChoiceGroup value={value} options={housingTypeOptions} labels={housingTypeLabels} onChange={onChange} />}
               />
               <Controller
                 control={control}
@@ -494,6 +499,11 @@ function formatBoolean(value?: boolean | null) {
   return value ? 'Evet' : 'Hayır';
 }
 
+function formatHousingType(value?: string | null) {
+  if (!value) return '-';
+  return housingTypeLabels[value as keyof typeof housingTypeLabels] || value;
+}
+
 function RequestReviewCard({
   request,
   reviewing,
@@ -517,7 +527,7 @@ function RequestReviewCard({
       </View>
       <RequestFact label="Mesaj" value={request.message} />
       <View style={styles.metaGrid}>
-        <Meta label="Konut tipi" value={request.housingType || '-'} />
+        <Meta label="Konut tipi" value={formatHousingType(request.housingType)} />
         <Meta label="Evcil hayvan" value={request.hasOtherPets ? 'Var' : 'Yok'} />
         <Meta label="Çocuk" value={request.hasChildren ? 'Var' : 'Yok'} />
         <Meta label="Tarih" value={formatDate(request.createdAt)} />
@@ -542,7 +552,7 @@ function MyRequestSummary({ request }: { request: AdoptionRequest }) {
       <Text style={styles.description}>Bu ilana daha önce başvuru yaptın.</Text>
       <RequestFact label="Mesajın" value={request.message} />
       <View style={styles.metaGrid}>
-        <Meta label="Konut tipi" value={request.housingType || '-'} />
+        <Meta label="Konut tipi" value={formatHousingType(request.housingType)} />
         <Meta label="Evcil hayvan" value={request.hasOtherPets ? 'Var' : 'Yok'} />
         <Meta label="Çocuk" value={request.hasChildren ? 'Var' : 'Yok'} />
         <Meta label="Telefon" value={request.contactPhone || '-'} />

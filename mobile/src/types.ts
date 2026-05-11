@@ -7,6 +7,7 @@ export type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 export type MessageStatus = 'SENT' | 'READ' | 'DELETED';
 export type ReportReason = 'SPAM' | 'INAPPROPRIATE' | 'SCAM' | 'OTHER';
 export type NotificationType = 'REQUEST_CREATED' | 'REQUEST_APPROVED' | 'REQUEST_REJECTED' | 'NEW_MESSAGE' | 'SYSTEM';
+export type HousingType = 'DETACHED' | 'APARTMENT' | 'OTHER';
 
 export interface CityItem {
   id: string;
@@ -117,7 +118,7 @@ export interface AdoptionRequest {
   applicantUserId: string;
   status: RequestStatus;
   message: string;
-  housingType?: string | null;
+  housingType?: HousingType | null;
   hasOtherPets?: boolean | null;
   hasChildren?: boolean | null;
   experienceWithPets?: string | null;
