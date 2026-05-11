@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { HousingType } from '@prisma/client';
 
 export class CreateAdoptionRequestDto {
   @IsUUID()
@@ -9,9 +10,9 @@ export class CreateAdoptionRequestDto {
   @IsNotEmpty()
   message!: string;
 
-  @IsString()
+  @IsEnum(HousingType)
   @IsOptional()
-  housingType?: string;
+  housingType?: HousingType;
 
   @Type(() => Boolean)
   @IsBoolean()

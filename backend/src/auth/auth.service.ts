@@ -20,7 +20,14 @@ export class AuthService {
     async register(registerDto: RegisterDto) {
         const existingUser = await this.usersService.findByEmail(registerDto.email);
         if (existingUser) {
-            throw new ConflictException('User with this email already exists');
+            throw new ConflictException('Bu e-posta adresi zaten kullanımda');
+        }
+
+        if (registerDto.contactPhone) {
+            const existingPhone = await this.usersService.findByPhone(registerDto.contactPhone);
+            if (existingPhone) {
+                throw new ConflictException('Bu telefon numarası zaten kullanımda');
+            }
         }
 
         const salt = await bcrypt.genSalt();

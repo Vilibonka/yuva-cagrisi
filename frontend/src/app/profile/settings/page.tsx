@@ -95,6 +95,12 @@ export default function ProfilePage() {
     setError(null);
     setSuccess(false);
 
+    if (formData.contactPhone && !/^05\d{9}$/.test(formData.contactPhone)) {
+      setError('Telefon numarası 05 ile başlamalı ve 11 haneli olmalıdır (Örn: 05XXXXXXXXX)');
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data } = await api.patch('/users/me', formData);
       updateUser(data);
@@ -256,6 +262,7 @@ export default function ProfilePage() {
                         <input
                           name="contactPhone"
                           type="tel"
+                          maxLength={11}
                           placeholder="05xx xxx xx xx"
                           className="block w-full rounded-2xl border border-gray-100 bg-gray-50/50 py-3.5 pl-12 pr-4 text-gray-900 transition-all focus:border-orange-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-orange-100"
                           value={formData.contactPhone}

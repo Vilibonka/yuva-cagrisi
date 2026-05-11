@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, User } from '@prisma/client';
 
@@ -9,6 +9,12 @@ export class UsersService {
     async findByEmail(email: string): Promise<User | null> {
         return this.prisma.user.findUnique({
             where: { email },
+        });
+    }
+
+    async findByPhone(contactPhone: string): Promise<User | null> {
+        return this.prisma.user.findFirst({
+            where: { contactPhone },
         });
     }
 
@@ -38,6 +44,25 @@ export class UsersService {
     }
 
     async updateProfile(id: string, data: any) {
+        // Uniqueness checks
+        if (data.email) {
+            const existingWithEmail = await this.prisma.user.findFirst({
+                where: { email: data.email, NOT: { id } }
+            });
+            if (existingWithEmail) {
+                throw new ConflictException('Bu e-posta adresi zaten kullanımda');
+            }
+        }
+
+        if (data.contactPhone) {
+            const existingWithPhone = await this.prisma.user.findFirst({
+                where: { contactPhone: data.contactPhone, NOT: { id } }
+            });
+            if (existingWithPhone) {
+                throw new ConflictException('Bu telefon numarası zaten kullanımda');
+            }
+        }
+
         let cityId = undefined;
         if (data.city) {
             const cityRecord = await this.prisma.city.findFirst({
