@@ -10,11 +10,14 @@ import { buildImageUrl } from '@/lib/config';
 export default function ProfileScreen() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
 
+  React.useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace({ pathname: '/login', params: { redirectTo: '/profile' } });
+    }
+  }, [isLoading, isAuthenticated]);
+
   if (isLoading) return <LoadingState label="Profil açılıyor..." />;
-  if (!isAuthenticated) {
-    router.replace({ pathname: '/login', params: { redirectTo: '/profile' } });
-    return <LoadingState label="Girişe yönlendiriliyor..." />;
-  }
+  if (!isAuthenticated) return <LoadingState label="Girişe yönlendiriliyor..." />;
 
   const signOut = async () => {
     await logout();
